@@ -1,0 +1,238 @@
+#!/usr/bin/env ruby
+
+require "djinni"
+require "io/console"
+require "json"
+require "optparse"
+require "pathname"
+require "rubeepass"
+require "string"
+
+class RPassExit
+    GOOD = 0
+    INVALID_OPTION = 1
+    INVALID_ARGUMENT = 2
+    MISSING_ARGUMENT = 3
+    EXTRA_ARGUMENTS = 4
+    KDBX_NOT_FOUND = 5
+    KDBX_NOT_READABLE = 6
+    KEYFILE_NOT_FOUND = 7
+    KEYFILE_NOT_READABLE = 8
+    KDBX_NOT_OPENED = 9
+end
+
+def get_password
+    print "Enter password: "
+    passwd = STDIN.noecho(&:gets)
+    puts
+    return passwd.chomp
+end
+
+def parse(args)
+    options = Hash.new
+    options["export_file"] = nil
+    options["export_format"] = "xml"
+    options["password"] = nil
+    options["keyfile"] = nil
+    options["timeout"] = nil
+
+    parser = OptionParser.new do |opts|
+        opts.banner = "Usage: #{File.basename($0)} [OPTIONS] [kdbx]"
+
+        opts.on(
+            "-e",
+            "--export=FILE",
+            "Export database to file"
+        ) do |file|
+            options["export_file"] = file
+        end
+
+        opts.on(
+            "-f",
+            "--format=FORMAT",
+            [ "gzip", "xml" ],
+            "Specify format to use when exporting (default: xml)"
+        ) do |format|
+            options["export_format"] = format
+        end
+
+        opts.on("-h", "--help", "Display this help message") do
+            puts opts
+            exit RPassExit::GOOD
+        end
+
+        opts.on(
+            "-k",
+            "--keyfile=KEYFILE",
+            "Use specified keyfile"
+        ) do |keyfile|
+            options["keyfile"] = Pathname.new(keyfile).expand_path
+        end
+
+        opts.on(
+            "-p",
+            "--password=PASSWORD",
+            "Use specified password (will prompt if not provided)"
+        ) do |password|
+            options["password"] = password
+        end
+
+        opts.on("-t", "--timeout=TIMEOUT", "Clipboard timeout") do |t|
+            options["timeout"] = t.to_i
+        end
+
+        opts.on(
+            "",
+            "FORMATS",
+            "\tgzip",
+            "\txml"
+        )
+    end
+
+    begin
+        parser.parse!
+    rescue OptionParser::InvalidOption => e
+        puts e.message
+        puts parser
+        exit RPassExit::INVALID_OPTION
+    rescue OptionParser::InvalidArgument => e
+        puts e.message
+        puts parser
+        exit RPassExit::INVALID_ARGUMENT
+    rescue OptionParser::MissingArgument => e
+        puts e.message
+        puts parser
+        exit RPassExit::MISSING_ARGUMENT
+    end
+
+    if (args.length > 1)
+        puts parser
+        exit RPassExit::EXTRA_ARGUMENTS
+    end
+
+    # Read config
+    rc = read_rpassrc
+
+    # Determine kdbx and keyfile
+    if (args.length == 1)
+        # Use specified kdbx (and keyfile if specified)
+        options["kdbx"] = Pathname.new(args[0]).expand_path
+    else
+        # Use kdbx from config if stored
+        if (rc["last_kdbx"] && !rc["last_kdbx"].empty?)
+            options["kdbx"] = Pathname.new(
+                rc["last_kdbx"]
+            ).expand_path
+        end
+
+        # Use keyfile from config if stored and not specified already
+        if (options["keyfile"].nil?)
+            if (rc["last_keyfile"] && !rc["last_keyfile"].empty?)
+                options["keyfile"] = Pathname.new(
+                    rc["last_keyfile"]
+                ).expand_path
+            end
+        end
+    end
+
+    # Determine timeout
+    if (options["timeout"].nil?)
+        if (rc["timeout"])
+            options["timeout"] = rc["timeout"]
+        else
+            options["timeout"] = 7
+        end
+    end
+
+    # Throw error if kdbx not specified or in config
+    if (options["kdbx"].nil?)
+        puts parser
+        exit RPassExit::MISSING_ARGUMENT
+    end
+
+    # Throw error if kdbx does not exist or is not readable
+    if (!options["kdbx"].exist?)
+        puts parser
+        exit RPassExit::KDBX_NOT_FOUND
+    elsif (!options["kdbx"].readable?)
+        puts parser
+        exit RPassExit::KDBX_NOT_READABLE
+    end
+
+    # Throw error if keyfile does not exist or is not readable
+    if (options["keyfile"])
+        if (!options["keyfile"].exist?)
+            puts parser
+            exit RPassExit::KEYFILE_NOT_FOUND
+        elsif (!options["keyfile"].readable?)
+            puts parser
+            exit RPassExit::KEYFILE_NOT_READABLE
+        end
+    end
+
+    # Store data in config
+    rc["last_kdbx"] = options["kdbx"]
+    rc["last_keyfile"] = options["keyfile"]
+    rc["timeout"] = options["timeout"]
+    write_rpassrc(rc)
+
+    return options
+end
+
+def read_rpassrc
+    default = Hash.new
+    default["last_kdbx"] = nil
+    default["last_keyfile"] = nil
+    default["timeout"] = 7
+
+    rc_file = Pathname.new("~/.rpassrc").expand_path
+    return default if (!rc_file.exist? && !rc_file.symlink?)
+    return JSON.parse(File.read(rc_file))
+end
+
+def write_rpassrc(rc)
+    rc_file = Pathname.new("~/.rpassrc").expand_path
+    File.open(rc_file, "w") do |f|
+        f.write(JSON.pretty_generate(rc))
+    end
+end
+
+options = parse(ARGV)
+
+kdbx = options["kdbx"]
+password = options["password"] if (options["password"])
+password = get_password if (options["password"].nil?)
+keyfile = options["keyfile"]
+
+keepass = nil
+begin
+    keepass = RubeePass.new(kdbx, password, keyfile).open
+rescue RubeePass::Error => e
+    puts e.message
+    exit RPassExit::KDBX_NOT_OPENED
+end
+exit RPassExit::KDBX_NOT_OPENED if (keepass.nil?)
+
+if (options["export_file"])
+    File.open(options["export_file"], "w") do |f|
+        case options["export_format"]
+        when "gzip"
+            f.write(keepass.gzip)
+        when "xml"
+            f.write(keepass.xml)
+        end
+    end
+    exit RPassExit::GOOD
+end
+
+djinni = Djinni.new
+djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/builtins")
+djinni.prompt(
+    {
+        "keepass" => keepass,
+        "cwd" => keepass.db,
+        "clipboard_timeout" => options["timeout"]
+    },
+    "rpass:/> ".white
+)
+exit RPassExit::GOOD
