@@ -138,6 +138,19 @@ class RubeePass
     end
     private :derive_aes_key
 
+    def export(export_file, format)
+        start_opening
+
+        File.open(export_file, "w") do |f|
+            case format
+            when "gzip"
+                f.write(@gzip)
+            when "xml"
+                f.write(@xml)
+            end
+        end
+    end
+
     def extract_xml
         @xml = Zlib::GzipReader.new(StringIO.new(@gzip)).read
     end
@@ -165,16 +178,9 @@ class RubeePass
     private :handle_protected
 
     def initialize(kdbx, password, keyfile = nil)
-        @aes_iv = nil
-        @aes_key = nil
-        @db = nil
-        @gzip = nil
-        @header = nil
         @kdbx = kdbx
-        @key = nil
         @keyfile = keyfile
         @password = password
-        @xml = nil
     end
 
     def join_key_and_keyfile
@@ -241,15 +247,7 @@ class RubeePass
     end
 
     def open
-        file = File.open(@kdbx)
-
-        read_magic_and_version(file)
-        read_header(file)
-        join_key_and_keyfile
-        derive_aes_key
-        read_gzip(file)
-
-        file.close
+        start_opening
 
         @protected_decryptor = ProtectedDecryptor.new(
             Digest::SHA256.digest(
@@ -258,7 +256,6 @@ class RubeePass
             ["E830094B97205D2A"].pack("H*")
         )
 
-        extract_xml
         parse_xml
 
         return self
@@ -486,6 +483,29 @@ class RubeePass
         end
     end
     private :read_magic_and_version
+
+    def start_opening
+        @aes_iv = nil
+        @aes_key = nil
+        @db = nil
+        @gzip = nil
+        @header = nil
+        @key = nil
+        @xml = nil
+
+        file = File.open(@kdbx)
+
+        read_magic_and_version(file)
+        read_header(file)
+        join_key_and_keyfile
+        derive_aes_key
+        read_gzip(file)
+
+        file.close
+
+        extract_xml
+    end
+    private :start_opening
 
     def to_s
         return @db.to_s

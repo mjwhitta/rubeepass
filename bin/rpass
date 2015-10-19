@@ -204,25 +204,18 @@ password = options["password"] if (options["password"])
 password = get_password if (options["password"].nil?)
 keyfile = options["keyfile"]
 
-keepass = nil
+keepass = RubeePass.new(kdbx, password, keyfile)
+
+if (options["export_file"])
+    keepass.export(options["export_file"], options["export_format"])
+    exit RPassExit::GOOD
+end
+
 begin
-    keepass = RubeePass.new(kdbx, password, keyfile).open
+    keepass.open
 rescue RubeePass::Error => e
     puts e.message
     exit RPassExit::KDBX_NOT_OPENED
-end
-exit RPassExit::KDBX_NOT_OPENED if (keepass.nil?)
-
-if (options["export_file"])
-    File.open(options["export_file"], "w") do |f|
-        case options["export_format"]
-        when "gzip"
-            f.write(keepass.gzip)
-        when "xml"
-            f.write(keepass.xml)
-        end
-    end
-    exit RPassExit::GOOD
 end
 
 djinni = Djinni.new
