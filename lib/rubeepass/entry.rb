@@ -20,23 +20,33 @@ class RubeePass::Entry
         return (self.title.downcase <=> other.title.downcase)
     end
 
-    def details(level = 0)
+    def details(level = 0, show_passwd = false)
         lvl = Array.new(level, "  ").join
 
-        return [
-            "#{lvl}Title    : #{@title}".green,
-            # "#{lvl}UUID     : #{@uuid}",
-            "#{lvl}Username : #{@username}",
-            # "#{lvl}Password : #{password}".red,
-            "#{lvl}Url      : #{@url}",
-            "#{lvl}Notes    : #{@notes}"
-        ].join("\n")
+        ret = Array.new
+        ret.push("#{lvl}Title    : #{@title}".green)
+        # ret.push("#{lvl}UUID     : #{@uuid}")
+        ret.push("#{lvl}Username : #{@username}")
+        ret.push("#{lvl}Password : #{password}".red) if (show_passwd)
+        ret.push("#{lvl}Url      : #{@url}")
+
+        first = true
+        @notes.each_line do |line|
+            if (first)
+                ret.push("#{lvl}Notes    : #{line.strip}")
+                first = false
+            else
+                ret.push("#{lvl}           #{line.strip}")
+            end
+        end
+
+        return ret.join("\n")
     end
 
     def initialize(params)
         @group = params.fetch("Group", nil)
         @keepass = params.fetch("Keepass", nil)
-        @password = params.fetch("Notes", "")
+        @notes = params.fetch("Notes", "")
         @password = params.fetch("Password", "")
         @title = params.fetch("Title", "")
         @url = params.fetch("URL", "")

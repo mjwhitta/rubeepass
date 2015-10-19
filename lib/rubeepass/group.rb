@@ -19,7 +19,7 @@ class RubeePass::Group
         return (self.name.downcase <=> other.name.downcase)
     end
 
-    def details(level = 0)
+    def details(level = 0, show_passwd = false)
         out = Array.new
         lvl = Array.new(level, "  ").join
 
@@ -31,11 +31,11 @@ class RubeePass::Group
         end
 
         @groups.values.each do |group|
-            out.push(group.details(level + 1))
+            out.push(group.details(level + 1, show_passwd))
         end
 
         @entries.values.each do |entry|
-            out.push(entry.details(level + 1))
+            out.push(entry.details(level + 1, show_passwd))
         end
 
         return out.join("\n")

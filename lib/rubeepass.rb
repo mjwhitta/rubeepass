@@ -311,19 +311,16 @@ class RubeePass
     end
     private :parse_gzip
 
+    # Horrible attempt at parsing xml. Someday I might use a library
     def parse_xml
-        curr = Group.new(
-            {
-                "Keepass" => self,
-                "Name" => "/"
-            }
-        )
+        curr = Group.new({"Keepass" => self, "Name" => "/"})
         entry_params = Hash.new
         group_params = Hash.new
         ignore = true
+        inside_value = false
         status = nil
 
-        @xml.each_line do |line|
+        @xml.gsub("<", "\n<").each_line do |line|
             line.strip!
 
             case line
@@ -338,20 +335,37 @@ class RubeePass
                 next
             when "</Root>"
                 break
+            when %r{^.*</Value>}
+                line.gsub!(%r{</Value>$}, "")
+                entry_params[status] += line if (line && !line.empty?)
+                if (line && !line.empty?)
+                    entry_params[status] += "\n#{line}"
+                end
+
+                status = nil
+                inside_value = false
+                next
+            when ""
+                next if (!inside_value)
             end
 
             line = CGI::unescapeHTML(line)
             line = URI::unescape(line)
 
+            # Handle values with newlines
+            if (inside_value && !ignore)
+                entry_params[status] += "\n#{line}"
+                next
+            end
+
             # Always handle protected data
             case line
-            when %r{<Value Protected}
-                line.gsub!(%r{<?Value( Protected=\"True\")?>}, "")
+            when %r{^<Value Protected="True">.+}
+                line.gsub!(%r{^<Value Protected="True">}, "")
                 if (ignore)
                     handle_protected(line)
                 else
                     entry_params[status] = handle_protected(line)
-                    status = nil
                 end
                 next
             else
@@ -369,26 +383,27 @@ class RubeePass
             when "</Group>"
                 curr = curr.group
                 break if (curr.nil?)
-            when %r{<Key>.+</Key>}
-                status = line.gsub(%r{^<Key>|</Key>$}, "")
-            when %r{<Name>}
-                line.gsub!(%r{^<Name>|</Name>$}, "")
+            when %r{^<Key>.+}
+                status = line.gsub(%r{^<Key>}, "")
+            when %r{^<Name>.+}
+                line.gsub!(%r{^<Name>}, "")
                 group_params["Name"] = line
 
                 group = Group.new(group_params)
                 curr.groups[group.name] = group
                 curr = group
-            when %r{<UUID>.+</UUID>}
-                uuid = line.gsub(%r{^<UUID>|</UUID>$}, "")
+            when %r{^<UUID>.+}
+                uuid = line.gsub(%r{^<UUID>}, "")
                 if (group_params["UUID"].nil?)
                     group_params["UUID"] = uuid
                 else
                     entry_params["UUID"] = uuid
                 end
-            when %r{<Value>}
-                line.gsub!(%r{</?Value( /)?>}, "")
+            when %r{^<Value>.*}
+                line.gsub!(%r{<Value>}, "")
+                line = "" if (line.nil?)
                 entry_params[status] = line
-                status = nil
+                inside_value = true
             end
         end
 
