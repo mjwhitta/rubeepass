@@ -3,6 +3,7 @@ require "digest"
 require "openssl"
 require "os"
 require "scoobydoo"
+require "shellwords"
 require "uri"
 require "zlib"
 
@@ -85,7 +86,7 @@ class RubeePass
             end
 
             if (cp)
-                system("echo \"#{string}\" | #{cp}")
+                system("echo #{string.shellescape} | #{cp}")
             else
                 puts "Please install reattach-to-user-namespace!"
                 return
@@ -102,7 +103,7 @@ class RubeePass
             end
 
             if (cp)
-                system("echo \"#{string}\" | #{cp}")
+                system("echo #{string.shellescape} | #{cp}")
             else
                 puts "Please install either xclip or xsel!"
                 return
