@@ -71,11 +71,16 @@ class RubeePass
     end
 
     def copy_to_clipboard(string)
-        string = " \x7F" if (string.nil? || string.empty?)
+        string = "" if (string.nil?)
         if (OS::Underlying.windows?)
             puts "Your OS is not currently supported!"
             return
-        elsif (OS.mac?)
+        end
+
+        echo = ScoobyDoo.where_are_you("echo")
+
+        if (OS.mac?)
+            string = "" if (string.nil?)
             pbcopy = ScoobyDoo.where_are_you("pbcopy")
             rn = ScoobyDoo.where_are_you("reattach-to-user-namespace")
 
@@ -86,12 +91,13 @@ class RubeePass
             end
 
             if (cp)
-                system("echo #{string.shellescape} | #{cp}")
+                system("#{echo} -n #{string.shellescape} | #{cp}")
             else
                 puts "Please install reattach-to-user-namespace!"
                 return
             end
         elsif (OS.posix?)
+            string = " \x7F" if (string.empty?)
             xclip = ScoobyDoo.where_are_you("xclip")
             xsel = ScoobyDoo.where_are_you("xsel")
 
@@ -103,7 +109,7 @@ class RubeePass
             end
 
             if (cp)
-                system("echo #{string.shellescape} | #{cp}")
+                system("#{echo} -n #{string.shellescape} | #{cp}")
             else
                 puts "Please install either xclip or xsel!"
                 return
