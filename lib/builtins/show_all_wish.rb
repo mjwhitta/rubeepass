@@ -1,13 +1,13 @@
 require "djinni"
 require "string"
 
-class ShowWish < Djinni::Wish
+class ShowAllWish < Djinni::Wish
     def aliases
-        return [ "cat", "show" ]
+        return [ "showall" ]
     end
 
     def description
-        return "Show group/entry contents"
+        return "Show group/entry contents, including passwords"
     end
 
     def execute(args, djinni_env = {})
@@ -21,14 +21,14 @@ class ShowWish < Djinni::Wish
 
         if (new_cwd)
             if (target.empty?)
-                puts new_cwd
+                puts new_cwd.details(0, true)
             elsif (new_cwd.has_group?(target))
-                puts new_cwd.groups[target]
+                puts new_cwd.groups[target].details(0, true)
             elsif (new_cwd.has_entry?(target))
                 new_cwd.entry_titles.select do |entry|
                     target.downcase == entry.downcase
                 end.each do |entry|
-                    puts new_cwd.entries[entry]
+                    puts new_cwd.entries[entry].details(0, true)
                 end
             else
                 puts "Group/entry \"#{args}\" doesn't exist!"
