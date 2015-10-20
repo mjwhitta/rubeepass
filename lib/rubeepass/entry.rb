@@ -75,7 +75,11 @@ class RubeePass::Entry
 
     def password
         return nil if (@keepass.nil?)
-        return @keepass.protected_decryptor.get_password(@password)
+        begin
+            return @keepass.protected_decryptor.get_password(@password)
+        rescue
+            return @password
+        end
     end
 
     def to_s

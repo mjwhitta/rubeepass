@@ -311,7 +311,7 @@ class RubeePass
     end
     private :parse_gzip
 
-    # Horrible attempt at parsing xml. Someday I might use a library
+    # Horrible attempt at parsing xml. Someday I might use a library.
     def parse_xml
         curr = Group.new({"Keepass" => self, "Name" => "/"})
         entry_params = Hash.new
@@ -335,13 +335,7 @@ class RubeePass
                 next
             when "</Root>"
                 break
-            when %r{^.*</Value>}
-                line.gsub!(%r{</Value>$}, "")
-                entry_params[status] += line if (line && !line.empty?)
-                if (line && !line.empty?)
-                    entry_params[status] += "\n#{line}"
-                end
-
+            when "</Value>"
                 status = nil
                 inside_value = false
                 next
@@ -351,6 +345,13 @@ class RubeePass
 
             line = CGI::unescapeHTML(line)
             line = URI::unescape(line)
+            if (!line.valid_encoding?)
+                line = line.encode(
+                    "UTF-16be",
+                    :invalid=>:replace,
+                    :replace=>"?"
+                ).encode('UTF-8')
+            end
 
             # Handle values with newlines
             if (inside_value && !ignore)
@@ -400,7 +401,7 @@ class RubeePass
                     entry_params["UUID"] = uuid
                 end
             when %r{^<Value>.*}
-                line.gsub!(%r{<Value>}, "")
+                line.gsub!(%r{^<Value>}, "")
                 line = "" if (line.nil?)
                 entry_params[status] = line
                 inside_value = true
