@@ -38,6 +38,7 @@ end
 
 def parse(args)
     options = Hash.new
+    options["command"] = nil
     options["export_file"] = nil
     options["export_format"] = "xml"
     options["password"] = nil
@@ -46,6 +47,14 @@ def parse(args)
 
     parser = OptionParser.new do |opts|
         opts.banner = "Usage: #{File.basename($0)} [OPTIONS] [kdbx]"
+
+        opts.on(
+            "-c",
+            "--command=COMMAND",
+            "Run a command then exit"
+        ) do |command|
+            options["command"] = command
+        end
 
         opts.on(
             "-e",
@@ -244,12 +253,24 @@ end
 
 djinni = Djinni.new
 djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/builtins")
-djinni.prompt(
-    {
-        "keepass" => keepass,
-        "cwd" => keepass.db,
-        "clipboard_timeout" => options["timeout"]
-    },
-    "rpass:/> ".white
-)
+if (options["command"])
+    djinni.grant_wish(
+        "#{options["command"].chomp}\n",
+        {
+            "keepass" => keepass,
+            "cwd" => keepass.db,
+            "clipboard_timeout" => options["timeout"]
+        }
+    )
+    keepass.wait_to_exit
+else
+    djinni.prompt(
+        {
+            "keepass" => keepass,
+            "cwd" => keepass.db,
+            "clipboard_timeout" => options["timeout"]
+        },
+        "rpass:/> ".white
+    )
+end
 exit RPassExit::GOOD

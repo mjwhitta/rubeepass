@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
     s.name = "rubeepass"
-    s.version = "0.2.4"
+    s.version = "0.3.0"
     s.date = Time.new.strftime("%Y-%m-%d")
     s.summary = "Ruby KeePass 2.x implementation"
     s.description =

@@ -526,6 +526,11 @@ class RubeePass
     def to_s
         return @db.to_s
     end
+
+    def wait_to_exit
+        return if (@thread.nil?)
+        @thread.join
+    end
 end
 
 require "rubeepass/entry"

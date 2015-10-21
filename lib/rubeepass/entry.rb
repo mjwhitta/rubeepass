@@ -61,13 +61,32 @@ class RubeePass::Entry
     def method_missing(method_name, *args)
         super if (@keepass.nil?)
 
-        case method_name.to_s.gsub(/^copy_(.+)_to_clipboard$/, "\\1")
-        when "password"
-            @keepass.copy_to_clipboard(password)
-        when "url"
-            @keepass.copy_to_clipboard(@url)
-        when "username"
-            @keepass.copy_to_clipboard(@username)
+        if (method_name.to_s.match(/^copy_.+_to_clipboard$/))
+            method_name = method_name.to_s.gsub(
+                /^copy_(.+)_to_clipboard$/,
+                "\\1"
+            )
+            case method_name
+            when "password"
+                @keepass.copy_to_clipboard(password)
+            when "url"
+                @keepass.copy_to_clipboard(@url)
+            when "username"
+                @keepass.copy_to_clipboard(@username)
+            else
+                super
+            end
+        elsif (method_name.match(/^echo_.+$/))
+            case method_name.to_s.gsub(/^echo_/, "")
+            when "password"
+                puts password
+            when "url"
+                puts @url
+            when "username"
+                puts @username
+            else
+                super
+            end
         else
             super
         end
