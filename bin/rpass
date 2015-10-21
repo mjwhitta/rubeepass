@@ -23,9 +23,17 @@ end
 
 def get_password
     print "Enter password: "
-    passwd = STDIN.noecho(&:gets)
-    puts
-    return passwd.chomp
+    begin
+        passwd = STDIN.noecho(&:gets)
+        puts
+        return passwd.chomp
+    rescue Interrupt => e
+        puts
+        exit RPassExit::GOOD
+    rescue
+        puts
+        exit RPassExit::KDBX_NOT_OPENED
+    end
 end
 
 def parse(args)
@@ -207,15 +215,31 @@ keyfile = options["keyfile"]
 keepass = RubeePass.new(kdbx, password, keyfile)
 
 if (options["export_file"])
-    keepass.export(options["export_file"], options["export_format"])
+    begin
+        keepass.export(
+            options["export_file"],
+            options["export_format"]
+        )
+    rescue RubeePass::Error::InvalidPasswordError => e
+        puts e.message
+        password = get_password
+        keepass = RubeePass.new(kdbx, password, keyfile)
+    end
     exit RPassExit::GOOD
 end
 
-begin
-    keepass.open
-rescue RubeePass::Error => e
-    puts e.message
-    exit RPassExit::KDBX_NOT_OPENED
+loop do
+    begin
+        keepass.open
+        break
+    rescue RubeePass::Error::InvalidPasswordError => e
+        puts e.message
+        password = get_password
+        keepass = RubeePass.new(kdbx, password, keyfile)
+    rescue RubeePass::Error => e
+        puts e.message
+        exit RPassExit::KDBX_NOT_OPENED
+    end
 end
 
 djinni = Djinni.new
