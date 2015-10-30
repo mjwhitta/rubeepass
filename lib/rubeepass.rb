@@ -529,7 +529,12 @@ class RubeePass
 
     def wait_to_exit
         return if (@thread.nil?)
-        @thread.join
+        begin
+            @thread.join
+        rescue Interrupt => e
+            puts
+            return
+        end
     end
 end
 

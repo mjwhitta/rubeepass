@@ -253,24 +253,28 @@ end
 
 djinni = Djinni.new
 djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/builtins")
-if (options["command"])
-    djinni.grant_wish(
-        "#{options["command"].chomp}\n",
-        {
-            "keepass" => keepass,
-            "cwd" => keepass.db,
-            "clipboard_timeout" => options["timeout"]
-        }
-    )
+begin
+    if (options["command"])
+        djinni.grant_wish(
+            "#{options["command"].chomp}\n",
+            {
+                "keepass" => keepass,
+                "cwd" => keepass.db,
+                "clipboard_timeout" => options["timeout"]
+            }
+        )
+    else
+        djinni.prompt(
+            {
+                "keepass" => keepass,
+                "cwd" => keepass.db,
+                "clipboard_timeout" => options["timeout"]
+            },
+            "rpass:/> ".white
+        )
+    end
+# rescue SystemExit => e
+ensure
     keepass.wait_to_exit
-else
-    djinni.prompt(
-        {
-            "keepass" => keepass,
-            "cwd" => keepass.db,
-            "clipboard_timeout" => options["timeout"]
-        },
-        "rpass:/> ".white
-    )
 end
 exit RPassExit::GOOD
