@@ -252,7 +252,7 @@ loop do
 end
 
 djinni = Djinni.new
-djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/builtins")
+djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/rubeepass/wish")
 begin
     if (options["command"])
         djinni.grant_wish(
