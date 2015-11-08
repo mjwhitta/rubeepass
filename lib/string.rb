@@ -1,4 +1,4 @@
-# Redefine String class to allow for colorizing and rsplit
+# Redefine String class to allow for colorizing, rsplit, and word wrap
 class String
     def blue
         return colorize(36)
@@ -35,5 +35,9 @@ class String
 
     def white
         return colorize(37)
+    end
+
+    def word_wrap(width = 70)
+        return scan(/\S.{0,#{width}}\S(?=\s|$)|\S+/).join("\n")
     end
 end
