@@ -10,7 +10,7 @@ $ gem install rubeepass
 
 ## Usage
 
-```bash
+```
 $ rpass -h
 Usage: rpass [OPTIONS] [kdbx]
     -e, --export=FILE        Export database to file
