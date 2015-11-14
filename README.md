@@ -51,7 +51,7 @@ show       Show group contents
 
 ## Links
 
-- [Homepage](http://mjwhitta.github.io/rubeepass)
+- [Homepage](https://mjwhitta.github.io/rubeepass)
 - [Source](https://gitlab.com/mjwhitta/rubeepass)
 - [Mirror](https://github.com/mjwhitta/rubeepass)
 - [RubyGems](https://rubygems.org/gems/rubeepass)
