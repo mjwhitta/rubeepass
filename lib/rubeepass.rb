@@ -66,21 +66,20 @@ class RubeePass
         @thread.kill if (@thread)
         @thread = Thread.new do
             sleep time
-            copy_to_clipboard("")
+            copy_to_clipboard("", false)
         end
     end
 
-    def copy_to_clipboard(string)
+    def copy_to_clipboard(string, err = true)
         string = "" if (string.nil?)
         if (OS::Underlying.windows?)
-            puts "Your OS is not currently supported!"
+            puts "Your OS is not currently supported!" if (err)
             return
         end
 
         echo = ScoobyDoo.where_are_you("echo")
 
         if (OS.mac?)
-            string = "" if (string.nil?)
             pbcopy = ScoobyDoo.where_are_you("pbcopy")
             rn = ScoobyDoo.where_are_you("reattach-to-user-namespace")
 
@@ -93,29 +92,35 @@ class RubeePass
             if (cp)
                 system("#{echo} -n #{string.shellescape} | #{cp}")
             else
-                puts "Please install reattach-to-user-namespace!"
+                if (err)
+                    puts "Please install reattach-to-user-namespace!"
+                end
                 return
             end
         elsif (OS.posix?)
-            string = " \x7F" if (string.empty?)
             xclip = ScoobyDoo.where_are_you("xclip")
             xsel = ScoobyDoo.where_are_you("xsel")
 
-            cp = nil
-            if (xclip)
-                cp = "xclip -i -selection clipboard"
-            elsif (xsel)
-                cp = "xsel -i --clipboard"
-            end
+            ["clipboard", "primary", "secondary"].each do |sel|
+                cp = nil
+                if (xclip)
+                    # string = " \x7F" if (string.empty?)
+                    cp = "xclip -i -selection #{sel}"
+                elsif (xsel)
+                    cp = "xsel -i --#{sel}"
+                end
 
-            if (cp)
-                system("#{echo} -n #{string.shellescape} | #{cp}")
-            else
-                puts "Please install either xclip or xsel!"
-                return
+                if (cp)
+                    system("#{echo} -n #{string.shellescape} | #{cp}")
+                else
+                    if (err)
+                        puts "Please install either xclip or xsel!"
+                    end
+                    return
+                end
             end
         else
-            puts "Your OS is not currently supported!"
+            puts "Your OS is not currently supported!" if (err)
             return
         end
     end

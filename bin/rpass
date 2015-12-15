@@ -275,6 +275,7 @@ begin
     end
 # rescue SystemExit => e
 ensure
+    keepass.clear_clipboard
     keepass.wait_to_exit
 end
 exit RPassExit::GOOD
