@@ -263,6 +263,7 @@ begin
                 "clipboard_timeout" => options["timeout"]
             }
         )
+        keepass.wait_to_exit
     else
         djinni.prompt(
             {
