@@ -2,6 +2,7 @@ require "cgi"
 require "digest"
 require "openssl"
 require "os"
+require "rexml/document"
 require "scoobydoo"
 require "shellwords"
 require "uri"
@@ -169,19 +170,6 @@ class RubeePass
         return @db.fuzzy_find(input)
     end
 
-    def handle_protected(base64)
-        data = nil
-        begin
-            data = base64.unpack("m*")[0].fix
-        rescue ArgumentError => e
-            raise Error::InvalidProtectedDataError.new
-        end
-        raise Error::InvalidProtectedDataError.new if (data.nil?)
-
-        return @protected_decryptor.add_to_stream(data)
-    end
-    private :handle_protected
-
     def initialize(kdbx, password, keyfile = nil)
         @kdbx = kdbx
         @keyfile = keyfile
@@ -316,104 +304,14 @@ class RubeePass
     end
     private :parse_gzip
 
-    # Horrible attempt at parsing xml. Someday I might use a library.
     def parse_xml
-        curr = Group.new({"Keepass" => self, "Name" => "/"})
-        entry_params = Hash.new
-        group_params = Hash.new
-        ignore = true
-        inside_value = false
-        status = nil
-
-        @xml.gsub("<", "\n<").each_line do |line|
-            line.strip!
-
-            case line
-            when "<History>"
-                ignore = true
-                next
-            when "</History>"
-                ignore = false
-                next
-            when "<Root>"
-                ignore = false
-                next
-            when "</Root>"
-                break
-            when "</Value>"
-                status = nil
-                inside_value = false
-                next
-            when ""
-                next if (!inside_value)
-            end
-
-            line = CGI::unescapeHTML(line)
-            line = URI::unescape(line)
-            if (!line.valid_encoding?)
-                line = line.encode(
-                    "UTF-16be",
-                    :invalid=>:replace,
-                    :replace=>"?"
-                ).encode('UTF-8')
-            end
-
-            # Handle values with newlines
-            if (inside_value && !ignore)
-                entry_params[status] += "\n#{line}"
-                next
-            end
-
-            # Always handle protected data
-            case line
-            when %r{^<Value Protected="True">.+}
-                line.gsub!(%r{^<Value Protected="True">}, "")
-                if (ignore)
-                    handle_protected(line)
-                else
-                    entry_params[status] = handle_protected(line)
-                end
-                next
-            else
-                next if (ignore)
-            end
-
-            case line
-            when "<Entry>"
-                entry_params = { "Keepass" => self, "Group" => curr }
-            when "</Entry>"
-                entry = Entry.new(entry_params)
-                curr.entries[entry.title] = entry
-            when "<Group>"
-                group_params = { "Keepass" => self, "Group" => curr }
-            when "</Group>"
-                curr = curr.group
-                break if (curr.nil?)
-            when %r{^<Key>.+}
-                status = line.gsub(%r{^<Key>}, "")
-            when %r{^<Name>.+}
-                line.gsub!(%r{^<Name>}, "")
-                group_params["Name"] = line
-
-                group = Group.new(group_params)
-                curr.groups[group.name] = group
-                curr = group
-            when %r{^<UUID>.+}
-                uuid = line.gsub(%r{^<UUID>}, "")
-                if (group_params["UUID"].nil?)
-                    group_params["UUID"] = uuid
-                else
-                    entry_params["UUID"] = uuid
-                end
-            when %r{^<Value>.*}
-                line.gsub!(%r{^<Value>}, "")
-                line = "" if (line.nil?)
-                entry_params[status] = line
-                inside_value = true
-            end
+        doc = REXML::Document.new(@xml)
+        if (doc.elements["KeePassFile/Root"].nil?)
+            raise Error::InvalidXMLError.new
         end
 
-        @db = curr
+        root = doc.elements["KeePassFile/Root"]
+        @db = Group.from_xml(self, nil, root)
     end
     private :parse_xml
 

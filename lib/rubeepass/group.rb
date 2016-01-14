@@ -1,3 +1,4 @@
+require "rexml/document"
 require "string"
 
 class RubeePass::Group
@@ -23,8 +24,8 @@ class RubeePass::Group
         out = Array.new
         lvl = Array.new(level, "  ").join
 
-        group_details = [ "#{@name}".blue ]
-        group_details[0] = "#{@path}".blue if (level == 0)
+        group_details = [ "#{@path}".blue ] if (level == 0)
+        group_details = [ "#{@name}".blue ] if (level != 0)
 
         group_details.each do |line|
             out.push("#{lvl}#{line}")
@@ -61,6 +62,52 @@ class RubeePass::Group
         end
 
         return cwd
+    end
+
+    def self.from_xml(keepass, parent, xml)
+        name = xml.elements["Name"].text if (parent)
+        name = "" if (name.nil?)
+        name = "/" if (parent.nil?)
+
+        notes = xml.elements["Notes"].text if (parent)
+        notes = "" if (notes.nil?)
+        notes = "" if (parent.nil?)
+
+        uuid = xml.elements["UUID"].text if (parent)
+        uuid = "" if (uuid.nil?)
+        uuid = "" if (parent.nil?)
+
+        group = RubeePass::Group.new(
+            parent,
+            keepass,
+            name,
+            notes,
+            uuid
+        )
+
+        if (xml.elements["Entry"])
+            xml.elements.each("Entry") do |entry_xml|
+                entry = RubeePass::Entry.from_xml(
+                    keepass,
+                    group,
+                    entry_xml
+                )
+                group.entries[entry.title] = entry
+            end
+        end
+
+        if (xml.elements["Group"])
+            xml.elements.each("Group") do |group_xml|
+                child = RubeePass::Group.from_xml(
+                    keepass,
+                    group,
+                    group_xml
+                )
+                group.groups[child.name] = child
+            end
+        end
+
+        return group
     end
 
     def fuzzy_find(input)
@@ -114,13 +161,14 @@ class RubeePass::Group
         return false
     end
 
-    def initialize(params)
+    def initialize(group, keepass, name, notes, uuid)
         @entries = Hash.new
-        @group = params.fetch("Group", nil)
+        @group = group
         @groups = Hash.new
-        @keepass = params.fetch("Keepass", nil)
-        @name = params.fetch("Name", "")
-        @uuid = params.fetch("UUID", "")
+        @keepass = keepass
+        @name = name
+        @notes = notes
+        @uuid = uuid
 
         @path = @name
         @path = "#{@group.path}/#{@name}" if (@group)

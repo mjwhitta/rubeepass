@@ -1,3 +1,4 @@
+require "rexml/document"
 require "string"
 
 class RubeePass::Entry
@@ -43,15 +44,90 @@ class RubeePass::Entry
         return ret.join("\n")
     end
 
-    def initialize(params)
-        @group = params.fetch("Group", nil)
-        @keepass = params.fetch("Keepass", nil)
-        @notes = params.fetch("Notes", "")
-        @password = params.fetch("Password", "")
-        @title = params.fetch("Title", "")
-        @url = params.fetch("URL", "")
-        @username = params.fetch("UserName", "")
-        @uuid = params.fetch("UUID", "")
+    def self.from_xml(keepass, parent, xml)
+        notes = ""
+        password = ""
+        title = ""
+        url = ""
+        username = ""
+
+        uuid = xml.elements["UUID"].text
+        uuid = "" if (uuid.nil?)
+
+        xml.elements.each("String") do |elem|
+            case elem.elements["Key"].text
+            when "Notes"
+                notes = elem.elements["Value"].text
+                notes = "" if (notes.nil?)
+            when "Password"
+                value = elem.elements["Value"]
+                if (value.attributes["Protected"] == "True")
+                    password = handle_protected(keepass, value.text)
+                else
+                    password = value.text
+                    password = "" if (password.nil?)
+                end
+            when "Title"
+                title = elem.elements["Value"].text
+                title = "" if (title.nil?)
+            when "URL"
+                url = elem.elements["Value"].text
+                url = "" if (url.nil?)
+            when "UserName"
+                username = elem.elements["Value"].text
+                username = "" if (username.nil?)
+            end
+        end
+
+        # Handle protected data from history
+        xml.elements.each("History/Entry/String/Value") do |value|
+            if (value.attributes["Protected"] == "True")
+                handle_protected(keepass, value.text)
+            end
+        end
+
+        return RubeePass::Entry.new(
+            parent,
+            keepass,
+            notes,
+            password,
+            title,
+            url,
+            username,
+            uuid
+        )
+    end
+
+    def self.handle_protected(keepass, base64)
+        data = nil
+        begin
+            data = base64.unpack("m*")[0].fix
+        rescue ArgumentError => e
+            raise Error::InvalidProtectedDataError.new
+        end
+        raise Error::InvalidProtectedDataError.new if (data.nil?)
+
+        return keepass.protected_decryptor.add_to_stream(data)
+    end
+
+    def initialize(
+        group,
+        keepass,
+        notes,
+        password,
+        title,
+        url,
+        username,
+        uuid
+    )
+        @group = group
+        @keepass = keepass
+        @notes = notes
+        @password = password
+        @title = title
+        @url = url
+        @username = username
+        @uuid = uuid
 
         @path = @title
         @path = "#{@group.path}/#{@title}" if (@group)
@@ -95,7 +171,9 @@ class RubeePass::Entry
     def password
         return nil if (@keepass.nil?)
         begin
-            return @keepass.protected_decryptor.get_password(@password)
+            return @keepass.protected_decryptor.get_password(
+                @password
+            )
         rescue
             return @password
         end
