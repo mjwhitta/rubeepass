@@ -100,6 +100,7 @@ class RubeePass::Entry
 
     def self.handle_protected(keepass, base64)
         data = nil
+        return nil if (base64.nil?)
         begin
             data = base64.unpack("m*")[0].fix
         rescue ArgumentError => e
@@ -170,6 +171,7 @@ class RubeePass::Entry
 
     def password
         return nil if (@keepass.nil?)
+        return "" if (@password.nil?)
         begin
             return @keepass.protected_decryptor.get_password(
                 @password

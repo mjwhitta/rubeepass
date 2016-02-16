@@ -436,7 +436,6 @@ class RubeePass
             @thread.join
         rescue Interrupt => e
             puts
-            return
         end
     end
 end
