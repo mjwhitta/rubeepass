@@ -1,5 +1,5 @@
+require "colorize"
 require "djinni"
-require "string"
 
 class LSWish < Djinni::Wish
     def aliases

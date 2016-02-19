@@ -5,6 +5,7 @@ require "os"
 require "rexml/document"
 require "scoobydoo"
 require "shellwords"
+require "string"
 require "uri"
 require "zlib"
 
@@ -77,6 +78,8 @@ class RubeePass
             puts "Your OS is not currently supported!" if (err)
             return
         end
+
+        return if (ENV["DISPLAY"].nil? || ENV["DISPLAY"].empty?)
 
         echo = ScoobyDoo.where_are_you("echo")
 

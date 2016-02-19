@@ -1,5 +1,5 @@
+require "colorize"
 require "djinni"
-require "string"
 
 class CopyWish < Djinni::Wish
     def aliases
@@ -19,6 +19,11 @@ class CopyWish < Djinni::Wish
         field, args = args.split(" ", 2)
         if (!@fields.include?(field))
             puts usage
+            return
+        end
+
+        if (ENV["DISPLAY"].nil? || ENV["DISPLAY"].empty?)
+            puts "DISPLAY not set!"
             return
         end
 

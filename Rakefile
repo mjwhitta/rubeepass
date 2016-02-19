@@ -1,3 +1,4 @@
+require "colorize"
 require "rake/testtask"
 
 task :default => :gem
@@ -8,6 +9,11 @@ task :clean do
     system("chmod -R go-rwx bin lib")
 end
 
+desc "Show colors from colorize"
+task :colors do
+    String.color_samples
+end
+
 desc "Test example project"
 task :ex => :install do
     system("bin/rpass -p asdf -k test/asdf.xml test/asdf.kdbx")
@@ -16,17 +22,17 @@ end
 desc "Build gem"
 task :gem do
     system("chmod -R u=rwX,go=rX bin lib")
-    system("gem build rubeepass.gemspec")
+    system("gem build *.gemspec")
 end
 
 desc "Build and install gem"
 task :install => :gem do
-    system("gem install rubeepass*.gem")
+    system("gem install *.gem")
 end
 
 desc "Push gem to rubygems.org"
 task :push => [:clean, :gem] do
-    system("gem push rubeepass*.gem")
+    system("gem push *.gem")
 end
 
 desc "Run tests"

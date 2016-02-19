@@ -1,5 +1,5 @@
+require "colorize"
 require "rexml/document"
-require "string"
 
 class RubeePass::Group
     include Comparable

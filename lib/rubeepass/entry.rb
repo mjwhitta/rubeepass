@@ -1,3 +1,4 @@
+require "colorize"
 require "rexml/document"
 require "string"
 

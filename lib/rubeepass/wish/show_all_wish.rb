@@ -1,5 +1,5 @@
+require "colorize"
 require "djinni"
-require "string"
 
 class ShowAllWish < Djinni::Wish
     def aliases

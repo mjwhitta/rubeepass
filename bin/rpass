@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 
+require "colorize"
 require "djinni"
 require "io/console"
 require "json"
 require "optparse"
 require "pathname"
 require "rubeepass"
-require "string"
 
 class RPassExit
     GOOD = 0
