@@ -1,4 +1,3 @@
-require "colorize"
 require "djinni"
 
 class CopyWish < Djinni::Wish

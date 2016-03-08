@@ -1,6 +1,6 @@
 require "rubeepass/error"
 
-class RubeePass::Error::InvalidXMLError < RubeePass::Error
+class RubeePass::Error::InvalidXML < RubeePass::Error
     def initialize
         super("Invalid xml schema!")
     end

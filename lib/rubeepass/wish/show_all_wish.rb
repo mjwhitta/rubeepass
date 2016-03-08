@@ -1,4 +1,3 @@
-require "colorize"
 require "djinni"
 
 class ShowAllWish < Djinni::Wish

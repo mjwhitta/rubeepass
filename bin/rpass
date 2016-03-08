@@ -3,37 +3,57 @@
 require "colorize"
 require "djinni"
 require "io/console"
-require "json"
+require "json_config"
 require "optparse"
-require "pathname"
 require "rubeepass"
 
-class RPassExit
+class RubeePassExit
     GOOD = 0
     INVALID_OPTION = 1
     INVALID_ARGUMENT = 2
     MISSING_ARGUMENT = 3
     EXTRA_ARGUMENTS = 4
-    KDBX_NOT_FOUND = 5
-    KDBX_NOT_READABLE = 6
-    KEYFILE_NOT_FOUND = 7
-    KEYFILE_NOT_READABLE = 8
-    KDBX_NOT_OPENED = 9
+    EXCEPTION = 5
+end
+
+class RubeePassConfig < JSONConfig
+    def default_config
+        set("last_kdbx", nil)
+        set("last_keyfile", nil)
+        set("timeout", 10)
+    end
+
+    def last_kdbx(kdbx = nil)
+        set("last_kdbx", kdbx.to_s) if (kdbx)
+        kdbx = get("last_kdbx")
+        return nil if (kdbx.nil? || kdbx.empty?)
+        return kdbx
+    end
+
+    def last_keyfile(keyfile = nil)
+        set("last_keyfile", keyfile.to_s) if (keyfile)
+        keyfile = get("last_keyfile")
+        return nil if (keyfile.nil? || keyfile.empty?)
+        return keyfile
+    end
+
+    def timeout(t = nil)
+        set("timeout", t) if (t)
+        t = get("timeout")
+        case t
+        when /[0-9]+/
+            return t.to_i
+        else
+            return nil
+        end
+    end
 end
 
 def get_password
     print "Enter password: "
-    begin
-        passwd = STDIN.noecho(&:gets)
-        puts
-        return passwd.chomp
-    rescue Interrupt => e
-        puts
-        exit RPassExit::GOOD
-    rescue
-        puts
-        exit RPassExit::KDBX_NOT_OPENED
-    end
+    passwd = STDIN.noecho(&:gets)
+    puts
+    return passwd.chomp
 end
 
 def parse(args)
@@ -44,6 +64,7 @@ def parse(args)
     options["password"] = nil
     options["keyfile"] = nil
     options["timeout"] = nil
+    options["verbose"] = false
 
     parser = OptionParser.new do |opts|
         opts.banner = "Usage: #{File.basename($0)} [OPTIONS] [kdbx]"
@@ -75,7 +96,7 @@ def parse(args)
 
         opts.on("-h", "--help", "Display this help message") do
             puts opts
-            exit RPassExit::GOOD
+            exit RubeePassExit::GOOD
         end
 
         opts.on(
@@ -83,7 +104,11 @@ def parse(args)
             "--keyfile=KEYFILE",
             "Use specified keyfile"
         ) do |keyfile|
-            options["keyfile"] = Pathname.new(keyfile).expand_path
+            options["keyfile"] = keyfile
+        end
+
+        opts.on("--nocolor", "Disable colorized output") do
+            String.disable_colorization = true
         end
 
         opts.on(
@@ -99,10 +124,18 @@ def parse(args)
         end
 
         opts.on(
+            "-v",
+            "--verbose",
+            "Show backtrace when error occurs"
+        ) do
+            options["verbose"] = true
+        end
+
+        opts.on(
             "",
             "FORMATS",
-            "\tgzip",
-            "\txml"
+            "    gzip",
+            "    xml"
         )
     end
 
@@ -111,107 +144,61 @@ def parse(args)
     rescue OptionParser::InvalidOption => e
         puts e.message
         puts parser
-        exit RPassExit::INVALID_OPTION
+        exit RubeePassExit::INVALID_OPTION
     rescue OptionParser::InvalidArgument => e
         puts e.message
         puts parser
-        exit RPassExit::INVALID_ARGUMENT
+        exit RubeePassExit::INVALID_ARGUMENT
     rescue OptionParser::MissingArgument => e
         puts e.message
         puts parser
-        exit RPassExit::MISSING_ARGUMENT
+        exit RubeePassExit::MISSING_ARGUMENT
     end
 
     if (args.length > 1)
         puts parser
-        exit RPassExit::EXTRA_ARGUMENTS
+        exit RubeePassExit::EXTRA_ARGUMENTS
     end
 
     # Read config
-    rc = read_rpassrc
+    rc = RubeePassConfig.new("~/.rpassrc")
 
     # Determine kdbx and keyfile
     if (args.length == 1)
         # Use specified kdbx (and keyfile if specified)
-        options["kdbx"] = Pathname.new(args[0]).expand_path
+        options["kdbx"] = args[0]
     else
         # Use kdbx from config if stored
-        if (rc["last_kdbx"] && !rc["last_kdbx"].empty?)
-            options["kdbx"] = Pathname.new(
-                rc["last_kdbx"]
-            ).expand_path
+        if (rc.last_kdbx)
+            options["kdbx"] = rc.last_kdbx
         end
 
         # Use keyfile from config if stored and not specified already
         if (options["keyfile"].nil?)
-            if (rc["last_keyfile"] && !rc["last_keyfile"].empty?)
-                options["keyfile"] = Pathname.new(
-                    rc["last_keyfile"]
-                ).expand_path
+            if (rc.last_keyfile)
+                options["keyfile"] = rc.last_keyfile
             end
         end
     end
 
     # Determine timeout
     if (options["timeout"].nil?)
-        if (rc["timeout"])
-            options["timeout"] = rc["timeout"]
-        else
-            options["timeout"] = 7
-        end
+        options["timeout"] = 10
+        options["timeout"] = rc.timeout if (rc.timeout)
     end
 
     # Throw error if kdbx not specified or in config
     if (options["kdbx"].nil?)
         puts parser
-        exit RPassExit::MISSING_ARGUMENT
-    end
-
-    # Throw error if kdbx does not exist or is not readable
-    if (!options["kdbx"].exist?)
-        puts parser
-        exit RPassExit::KDBX_NOT_FOUND
-    elsif (!options["kdbx"].readable?)
-        puts parser
-        exit RPassExit::KDBX_NOT_READABLE
-    end
-
-    # Throw error if keyfile does not exist or is not readable
-    if (options["keyfile"])
-        if (!options["keyfile"].exist?)
-            puts parser
-            exit RPassExit::KEYFILE_NOT_FOUND
-        elsif (!options["keyfile"].readable?)
-            puts parser
-            exit RPassExit::KEYFILE_NOT_READABLE
-        end
+        exit RubeePassExit::MISSING_ARGUMENT
     end
 
     # Store data in config
-    rc["last_kdbx"] = options["kdbx"]
-    rc["last_keyfile"] = options["keyfile"]
-    rc["timeout"] = options["timeout"]
-    write_rpassrc(rc)
+    rc.last_kdbx(options["kdbx"])
+    rc.last_keyfile(options["keyfile"])
+    rc.timeout(options["timeout"])
 
     return options
-end
-
-def read_rpassrc
-    default = Hash.new
-    default["last_kdbx"] = nil
-    default["last_keyfile"] = nil
-    default["timeout"] = 7
-
-    rc_file = Pathname.new("~/.rpassrc").expand_path
-    return default if (!rc_file.exist? && !rc_file.symlink?)
-    return JSON.parse(File.read(rc_file))
-end
-
-def write_rpassrc(rc)
-    rc_file = Pathname.new("~/.rpassrc").expand_path
-    File.open(rc_file, "w") do |f|
-        f.write(JSON.pretty_generate(rc))
-    end
 end
 
 options = parse(ARGV)
@@ -221,39 +208,41 @@ password = options["password"] if (options["password"])
 password = get_password if (options["password"].nil?)
 keyfile = options["keyfile"]
 
-keepass = RubeePass.new(kdbx, password, keyfile)
-
-if (options["export_file"])
-    begin
-        keepass.export(
-            options["export_file"],
-            options["export_format"]
-        )
-    rescue RubeePass::Error::InvalidPasswordError => e
-        puts e.message
-        password = get_password
-        keepass = RubeePass.new(kdbx, password, keyfile)
-    end
-    exit RPassExit::GOOD
-end
-
-loop do
-    begin
-        keepass.open
-        break
-    rescue RubeePass::Error::InvalidPasswordError => e
-        puts e.message
-        password = get_password
-        keepass = RubeePass.new(kdbx, password, keyfile)
-    rescue RubeePass::Error => e
-        puts e.message
-        exit RPassExit::KDBX_NOT_OPENED
-    end
-end
-
-djinni = Djinni.new
-djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/rubeepass/wish")
 begin
+    keepass = RubeePass.new(
+        kdbx,
+        password,
+        keyfile,
+        !String.disable_colorization
+    )
+
+    loop do
+        begin
+            if (options["export_file"])
+                keepass.export(
+                    options["export_file"],
+                    options["export_format"]
+                )
+                exit RubeePassExit::GOOD
+            else
+                keepass.open
+            end
+            break
+        rescue RubeePass::Error::InvalidPassword => e
+            puts e.message
+            password = get_password
+            keepass = RubeePass.new(
+                kdbx,
+                password,
+                keyfile,
+                !String.disable_colorization
+            )
+        end
+    end
+
+    djinni = Djinni.new
+    djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/rubeepass/wish")
+
     if (options["command"])
         djinni.grant_wish(
             "#{options["command"].chomp}\n",
@@ -269,14 +258,44 @@ begin
             {
                 "keepass" => keepass,
                 "cwd" => keepass.db,
-                "clipboard_timeout" => options["timeout"]
+                "clipboard_timeout" => options["timeout"],
+                "prompt_color" => "light_white"
             },
-            "rpass:/> ".white
+            "rpass:/> ".light_white
         )
     end
-# rescue SystemExit => e
+rescue SystemExit
+    # Quit from djinni
+    # Exit gracefully
+rescue Interrupt
+    # ^C
+    # Exit gracefully
+rescue Errno::EPIPE
+    # Do nothing. This can happen if piping to another program such as
+    # less. Usually if less is closed before we're done with STDOUT.
+rescue RubeePass::Error => e
+    puts e.message
+    exit RubeePassExit::EXCEPTION
+rescue Exception => e
+    $stderr.puts "Oops! Looks like an error has occured! If the " \
+        "error persists, file a bug at:".word_wrap
+    $stderr.puts
+    $stderr.puts "    https://gitlab.com/mjwhitta/rubeepass/issues"
+    $stderr.puts
+    $stderr.puts "Maybe the message below will help. If not, you " \
+        "can use the --verbose flag to get a backtrace.".word_wrap
+
+    $stderr.puts e.message.white.on_red
+    if (options["verbose"])
+        e.backtrace.each do |line|
+            $stderr.puts line.light_yellow
+        end
+    end
+    exit RubeePassExit::EXCEPTION
 ensure
-    keepass.clear_clipboard
-    keepass.wait_to_exit
+    if (keepass)
+        keepass.clear_clipboard
+        keepass.wait_to_exit
+    end
 end
-exit RPassExit::GOOD
+exit RubeePassExit::GOOD

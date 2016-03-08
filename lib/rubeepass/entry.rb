@@ -22,14 +22,30 @@ class RubeePass::Entry
         return (self.title.downcase <=> other.title.downcase)
     end
 
+    def colorize_password(passwd)
+        return passwd if (!@colorize)
+        return passwd.light_red
+    end
+    private :colorize_password
+
+    def colorize_title(title)
+        return title if (!@colorize)
+        return title.light_green
+    end
+    private :colorize_title
+
     def details(level = 0, show_passwd = false)
         lvl = Array.new(level, "  ").join
 
         ret = Array.new
-        ret.push("#{lvl}Title    : #{@title}".green)
+        ret.push(colorize_title("#{lvl}Title    : #{@title}"))
         # ret.push("#{lvl}UUID     : #{@uuid}")
         ret.push("#{lvl}Username : #{@username}")
-        ret.push("#{lvl}Password : #{password}".red) if (show_passwd)
+        if (show_passwd)
+            ret.push(
+                colorize_password("#{lvl}Password : #{password}")
+            )
+        end
         ret.push("#{lvl}Url      : #{@url}")
 
         first = true
@@ -45,7 +61,7 @@ class RubeePass::Entry
         return ret.join("\n")
     end
 
-    def self.from_xml(keepass, parent, xml)
+    def self.from_xml(keepass, parent, xml, colorize = false)
         notes = ""
         password = ""
         title = ""
@@ -95,7 +111,8 @@ class RubeePass::Entry
             title,
             url,
             username,
-            uuid
+            uuid,
+            colorize
         )
     end
 
@@ -105,9 +122,9 @@ class RubeePass::Entry
         begin
             data = base64.unpack("m*")[0].fix
         rescue ArgumentError => e
-            raise Error::InvalidProtectedDataError.new
+            raise Error::InvalidProtectedData.new
         end
-        raise Error::InvalidProtectedDataError.new if (data.nil?)
+        raise Error::InvalidProtectedData.new if (data.nil?)
 
         return keepass.protected_decryptor.add_to_stream(data)
     end
@@ -120,8 +137,10 @@ class RubeePass::Entry
         title,
         url,
         username,
-        uuid
+        uuid,
+        colorize = false
     )
+        @colorize = colorize
         @group = group
         @keepass = keepass
         @notes = notes

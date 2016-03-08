@@ -69,7 +69,7 @@ class RPassTest < Minitest::Test
     end
 
     def test_open_exception
-        assert_raises(RubeePass::Error::InvalidPasswordError) do
+        assert_raises(RubeePass::Error::InvalidPassword) do
             RubeePass.new(@kdbx, "password").open
         end
     end

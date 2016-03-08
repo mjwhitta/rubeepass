@@ -1,6 +1,6 @@
 require "rubeepass/error"
 
-class RubeePass::Error::InvalidHeaderError < RubeePass::Error
+class RubeePass::Error::InvalidHeader < RubeePass::Error
     def initialize
         super("Invalid header format!")
     end

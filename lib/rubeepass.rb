@@ -2,6 +2,7 @@ require "cgi"
 require "digest"
 require "openssl"
 require "os"
+require "pathname"
 require "rexml/document"
 require "scoobydoo"
 require "shellwords"
@@ -173,10 +174,28 @@ class RubeePass
         return @db.fuzzy_find(input)
     end
 
-    def initialize(kdbx, password, keyfile = nil)
-        @kdbx = kdbx
-        @keyfile = keyfile
+    def initialize(kdbx, password, keyfile = nil, colorize = false)
+        @colorize = colorize
+        @kdbx = Pathname.new(kdbx).expand_path
+        @keyfile = nil
+        @keyfile = Pathname.new(keyfile).expand_path if (keyfile)
         @password = password
+
+        if (@kdbx.nil?)
+            # TODO
+        elsif (!@kdbx.exist?)
+            raise RubeePass::Error::FileNotFound.new(@kdbx)
+        elsif (!@kdbx.readable?)
+            raise RubeePass::Error::FileNotReadable.new(@kdbx)
+        end
+
+        if (@keyfile)
+            if (!@keyfile.exist?)
+                raise RubeePass::Error::FileNotFound.new(@keyfile)
+            elsif (!@keyfile.readable?)
+                raise RubeePass::Error::FileNotReadable.new(@keyfile)
+            end
+        end
     end
 
     def join_key_and_keyfile
@@ -264,28 +283,26 @@ class RubeePass
         loop do
             # Read block ID
             data = file.read(4)
-            raise Error::InvalidGzipError.new if (data.nil?)
+            raise Error::InvalidGzip.new if (data.nil?)
             id = data.unpack("L*")[0]
-            raise Error::InvalidGzipError.new if (block_id != id)
+            raise Error::InvalidGzip.new if (block_id != id)
 
             block_id += 1
 
             # Read expected hash
             data = file.read(32)
-            raise Error::InvalidGzipError.new if (data.nil?)
+            raise Error::InvalidGzip.new if (data.nil?)
             expected_hash = data
 
             # Read size
             data = file.read(4)
-            raise Error::InvalidGzipError.new if (data.nil?)
+            raise Error::InvalidGzip.new if (data.nil?)
             size = data.unpack("L*")[0]
 
             # Break is size is 0 and expected hash is all 0's
             if (size == 0)
                 expected_hash.each_byte do |byte|
-                    if (byte != 0)
-                        raise Error::InvalidGzipError.new
-                    end
+                    raise Error::InvalidGzip.new if (byte != 0)
                 end
                 break
             end
@@ -296,7 +313,7 @@ class RubeePass
 
             # Check that actual hash is same as expected hash
             if (actual_hash != expected_hash)
-                raise Error::InvalidGzipError.new
+                raise Error::InvalidGzip.new
             end
 
             # Append data
@@ -310,11 +327,11 @@ class RubeePass
     def parse_xml
         doc = REXML::Document.new(@xml)
         if (doc.elements["KeePassFile/Root"].nil?)
-            raise Error::InvalidXMLError.new
+            raise Error::InvalidXML.new
         end
 
         root = doc.elements["KeePassFile/Root"]
-        @db = Group.from_xml(self, nil, root)
+        @db = Group.from_xml(self, nil, root, @colorize)
     end
     private :parse_xml
 
@@ -331,11 +348,11 @@ class RubeePass
                 cipher.update(encrypted) + cipher.final
             )
         rescue OpenSSL::Cipher::CipherError => e
-            raise Error::InvalidPasswordError.new
+            raise Error::InvalidPassword.new
         end
 
         if (data.read(32) != @header[@@STREAM_START_BYTES])
-            raise Error::InvalidPasswordError.new
+            raise Error::InvalidPassword.new
         end
 
         @gzip = parse_gzip(data)
@@ -346,11 +363,11 @@ class RubeePass
         header = Hash.new
         loop do
             data = file.read(1)
-            raise Error::InvalidHeaderError.new if (data.nil?)
+            raise Error::InvalidHeader.new if (data.nil?)
             id = data.unpack("C*")[0]
 
             data = file.read(2)
-            raise Error::InvalidHeaderError.new if (data.nil?)
+            raise Error::InvalidHeader.new if (data.nil?)
             size = data.unpack("S*")[0]
 
             data = file.read(size)
@@ -371,11 +388,11 @@ class RubeePass
             (header[@@MASTER_SEED].length != 32) ||
             (header[@@TRANSFORM_SEED].length != 32)
         )
-            raise Error::InvalidHeaderError.new
+            raise Error::InvalidHeader.new
         elsif (header[@@INNER_RANDOM_STREAM_ID] != irsi)
-            raise Error::NotSalsaError.new
+            raise Error::NotSalsa.new
         elsif (header[@@CIPHER_ID].unpack("H*")[0] != aes)
-            raise Error::NotAESError.new
+            raise Error::NotAES.new
         end
 
         @header = header
@@ -384,24 +401,20 @@ class RubeePass
 
     def read_magic_and_version(file)
         data = file.read(4)
-        raise Error::InvalidMagicError.new if (data.nil?)
+        raise Error::InvalidMagic.new if (data.nil?)
         sig1 = data.unpack("L*")[0]
-        if (sig1 != @@MAGIC_SIG1)
-            raise Error::InvalidMagicError.new
-        end
+        raise Error::InvalidMagic.new if (sig1 != @@MAGIC_SIG1)
 
         data = file.read(4)
-        raise Error::InvalidMagicError.new if (data.nil?)
+        raise Error::InvalidMagic.new if (data.nil?)
         sig2 = data.unpack("L*")[0]
-        if (sig2 != @@MAGIC_SIG2)
-            raise Error::InvalidMagicError.new
-        end
+        raise Error::InvalidMagic.new if (sig2 != @@MAGIC_SIG2)
 
         data = file.read(4)
-        raise Error::InvalidVersionError.new if (data.nil?)
+        raise Error::InvalidVersion.new if (data.nil?)
         ver = data.unpack("L*")[0]
         if ((ver & 0xffff0000) != @@VERSION)
-            raise Error::InvalidVersionError.new if (data.nil?)
+            raise Error::InvalidVersion.new if (data.nil?)
         end
     end
     private :read_magic_and_version

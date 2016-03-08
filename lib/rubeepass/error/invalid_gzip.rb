@@ -1,6 +1,6 @@
 require "rubeepass/error"
 
-class RubeePass::Error::InvalidGzipError < RubeePass::Error
+class RubeePass::Error::InvalidGzip < RubeePass::Error
     def initialize
         super("Invalid gzip format!")
     end

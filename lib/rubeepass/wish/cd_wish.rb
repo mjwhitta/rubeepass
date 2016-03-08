@@ -13,13 +13,18 @@ class CDWish < Djinni::Wish
     def execute(args, djinni_env = {})
         keepass = djinni_env["keepass"]
         cwd = djinni_env["cwd"]
+        prompt_color = djinni_env["prompt_color"]
 
         args = keepass.absolute_path(args, cwd.path)
         new_cwd = keepass.find_group(args)
 
         if (new_cwd)
             djinni_env["cwd"] = new_cwd
-            prompt = "rpass:#{new_cwd.name}> ".white
+            if (prompt_color)
+                prompt = "rpass:#{new_cwd.name}> ".send(prompt_color)
+            else
+                prompt = "rpass:#{new_cwd.name}> "
+            end
             djinni_env["djinni_prompt"] = prompt
         else
             puts "Group \"#{args}\" doesn't exist!"

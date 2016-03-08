@@ -1,6 +1,6 @@
 require "rubeepass/error"
 
-class RubeePass::Error::NotAESError < RubeePass::Error
+class RubeePass::Error::NotAES < RubeePass::Error
     def initialize
         super("Not AES!")
     end

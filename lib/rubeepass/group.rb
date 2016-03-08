@@ -20,12 +20,18 @@ class RubeePass::Group
         return (self.name.downcase <=> other.name.downcase)
     end
 
+    def colorize_header(header)
+        return header if (!@colorize)
+        return header.light_blue
+    end
+    private :colorize_header
+
     def details(level = 0, show_passwd = false)
         out = Array.new
         lvl = Array.new(level, "  ").join
 
-        group_details = [ "#{@path}".blue ] if (level == 0)
-        group_details = [ "#{@name}".blue ] if (level != 0)
+        group_details = [ colorize_header(@path) ] if (level == 0)
+        group_details = [ colorize_header(@name) ] if (level != 0)
 
         group_details.each do |line|
             out.push("#{lvl}#{line}")
@@ -64,7 +70,7 @@ class RubeePass::Group
         return cwd
     end
 
-    def self.from_xml(keepass, parent, xml)
+    def self.from_xml(keepass, parent, xml, colorize = false)
         name = xml.elements["Name"].text if (parent)
         name = "" if (name.nil?)
         name = "/" if (parent.nil?)
@@ -82,7 +88,8 @@ class RubeePass::Group
             keepass,
             name,
             notes,
-            uuid
+            uuid,
+            colorize
         )
 
         if (xml.elements["Entry"])
@@ -90,7 +97,8 @@ class RubeePass::Group
                 entry = RubeePass::Entry.from_xml(
                     keepass,
                     group,
-                    entry_xml
+                    entry_xml,
+                    colorize
                 )
                 group.entries[entry.title] = entry
             end
@@ -101,7 +109,8 @@ class RubeePass::Group
                 child = RubeePass::Group.from_xml(
                     keepass,
                     group,
-                    group_xml
+                    group_xml,
+                    colorize
                 )
                 group.groups[child.name] = child
             end
@@ -161,7 +170,15 @@ class RubeePass::Group
         return false
     end
 
-    def initialize(group, keepass, name, notes, uuid)
+    def initialize(
+        group,
+        keepass,
+        name,
+        notes,
+        uuid,
+        colorize = false
+    )
+        @colorize = colorize
         @entries = Hash.new
         @group = group
         @groups = Hash.new
