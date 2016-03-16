@@ -21,7 +21,7 @@ class RubeePass::Group
     end
 
     def colorize_header(header)
-        return header if (!@colorize)
+        return header if (!RubeePass.colorize?)
         return header.light_blue
     end
     private :colorize_header
@@ -70,7 +70,7 @@ class RubeePass::Group
         return cwd
     end
 
-    def self.from_xml(keepass, parent, xml, colorize = false)
+    def self.from_xml(keepass, parent, xml)
         name = xml.elements["Name"].text if (parent)
         name = "" if (name.nil?)
         name = "/" if (parent.nil?)
@@ -88,8 +88,7 @@ class RubeePass::Group
             keepass,
             name,
             notes,
-            uuid,
-            colorize
+            uuid
         )
 
         if (xml.elements["Entry"])
@@ -97,8 +96,7 @@ class RubeePass::Group
                 entry = RubeePass::Entry.from_xml(
                     keepass,
                     group,
-                    entry_xml,
-                    colorize
+                    entry_xml
                 )
                 group.entries[entry.title] = entry
             end
@@ -109,8 +107,7 @@ class RubeePass::Group
                 child = RubeePass::Group.from_xml(
                     keepass,
                     group,
-                    group_xml,
-                    colorize
+                    group_xml
                 )
                 group.groups[child.name] = child
             end
@@ -175,10 +172,8 @@ class RubeePass::Group
         keepass,
         name,
         notes,
-        uuid,
-        colorize = false
+        uuid
     )
-        @colorize = colorize
         @entries = Hash.new
         @group = group
         @groups = Hash.new

@@ -73,6 +73,11 @@ class RubeePass
         end
     end
 
+    def self.colorize?
+        @@colorize ||= false
+        return @@colorize
+    end
+
     def copy_to_clipboard(string, err = true)
         string = "" if (string.nil?)
         if (OS::Underlying.windows?)
@@ -175,7 +180,7 @@ class RubeePass
     end
 
     def initialize(kdbx, password, keyfile = nil, colorize = false)
-        @colorize = colorize
+        @@colorize = colorize
         @kdbx = Pathname.new(kdbx).expand_path
         @keyfile = nil
         @keyfile = Pathname.new(keyfile).expand_path if (keyfile)
@@ -331,7 +336,7 @@ class RubeePass
         end
 
         root = doc.elements["KeePassFile/Root"]
-        @db = Group.from_xml(self, nil, root, @colorize)
+        @db = Group.from_xml(self, nil, root)
     end
     private :parse_xml
 

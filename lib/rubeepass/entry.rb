@@ -23,13 +23,13 @@ class RubeePass::Entry
     end
 
     def colorize_password(passwd)
-        return passwd if (!@colorize)
+        return passwd if (!RubeePass.colorize?)
         return passwd.light_red
     end
     private :colorize_password
 
     def colorize_title(title)
-        return title if (!@colorize)
+        return title if (!RubeePass.colorize?)
         return title.light_green
     end
     private :colorize_title
@@ -61,7 +61,7 @@ class RubeePass::Entry
         return ret.join("\n")
     end
 
-    def self.from_xml(keepass, parent, xml, colorize = false)
+    def self.from_xml(keepass, parent, xml)
         notes = ""
         password = ""
         title = ""
@@ -111,8 +111,7 @@ class RubeePass::Entry
             title,
             url,
             username,
-            uuid,
-            colorize
+            uuid
         )
     end
 
@@ -137,10 +136,8 @@ class RubeePass::Entry
         title,
         url,
         username,
-        uuid,
-        colorize = false
+        uuid
     )
-        @colorize = colorize
         @group = group
         @keepass = keepass
         @notes = notes
