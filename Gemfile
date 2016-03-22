@@ -1,6 +1,8 @@
 source "https://rubygems.org"
 
+gem "colorize"
 gem "djinni"
+gem "json_config"
 gem "minitest"
 gem "os"
 gem "rake"
