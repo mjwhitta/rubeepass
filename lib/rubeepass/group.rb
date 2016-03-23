@@ -49,7 +49,9 @@ class RubeePass::Group
     end
 
     def entry_titles
-        return @entries.keys.sort
+        return @entries.keys.sort do |a, b|
+            a.downcase <=> b.downcase
+        end
     end
 
     def find_group(path)
@@ -116,41 +118,42 @@ class RubeePass::Group
         return group
     end
 
-    def fuzzy_find(input)
-        return [ [], [], [] ] if (@keepass.nil?)
+    def fuzzy_find(search)
+        return [[], []] if (@keepass.nil?)
 
-        input = @path if (input.nil? || input.empty?)
-        input = @keepass.absolute_path(input, @path)
-        path, target = input.rsplit("/")
+        search = @path if (search.nil? || search.empty?)
+        search = @keepass.absolute_path(search, @path)
+        path, target = search.rsplit("/")
 
         new_cwd = find_group(path)
-        return [ input, [], [] ] if (new_cwd.nil?)
+        return [[], []] if (new_cwd.nil?)
 
         if (new_cwd.has_group?(target))
             new_cwd = new_cwd.groups[target]
             target = ""
-            input += "/"
         end
 
         group_completions = new_cwd.group_names
         entry_completions = new_cwd.entry_titles
 
         if (target.empty?)
-            return [ input, group_completions, entry_completions ]
+            return [group_completions, entry_completions]
         end
 
-        group_completions.delete_if do |group|
-            !group.downcase.start_with?(target.downcase)
+        group_completions.keep_if do |group|
+            group.downcase.start_with?(target.downcase)
         end
-        entry_completions.delete_if do |entry|
-            !entry.downcase.start_with?(target.downcase)
+        entry_completions.keep_if do |entry|
+            entry.downcase.start_with?(target.downcase)
         end
 
-        return [ input, group_completions, entry_completions ]
+        return [group_completions, entry_completions]
     end
 
     def group_names
-        return @groups.keys.sort
+        return @groups.keys.sort do |a, b|
+            a.downcase <=> b.downcase
+        end
     end
 
     def has_entry?(title)

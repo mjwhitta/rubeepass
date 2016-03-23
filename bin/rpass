@@ -277,6 +277,7 @@ rescue RubeePass::Error => e
     puts e.message
     exit RubeePassExit::EXCEPTION
 rescue Exception => e
+    $stderr.puts
     $stderr.puts "Oops! Looks like an error has occured! If the " \
         "error persists, file a bug at:".word_wrap
     $stderr.puts

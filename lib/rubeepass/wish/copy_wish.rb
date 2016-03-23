@@ -2,7 +2,7 @@ require "djinni"
 
 class CopyWish < Djinni::Wish
     def aliases
-        return [ "copy", "cp" ]
+        return ["copy", "cp"]
     end
 
     def description
@@ -10,129 +10,103 @@ class CopyWish < Djinni::Wish
     end
 
     def execute(args, djinni_env = {})
-        if (args.nil? || args.empty?)
-            puts usage
-            return
-        end
+        # "".split(" ", 2) => [] aka [nil, nil]
+        # " ".split(" ", 2) => [""] aka ["", nil]
+        # "pass".split(" ", 2) => ["pass"] aka ["pass", nil]
+        # "pass ".split(" ", 2) => ["pass", ""]
 
-        field, args = args.split(" ", 2)
-        if (!@fields.include?(field))
-            puts usage
-            return
-        end
-
-        if (ENV["DISPLAY"].nil? || ENV["DISPLAY"].empty?)
-            puts "DISPLAY not set!"
+        field, path = args.split(" ", 2)
+        if (
+            field.nil? ||
+            field.empty? ||
+            !@fields.include?(field) ||
+            path.nil? ||
+            path.empty?
+        )
+            usage
             return
         end
 
         keepass = djinni_env["keepass"]
         cwd = djinni_env["cwd"]
-        args = cwd.path if (args.nil? || args.empty?)
 
-        args = keepass.absolute_path(args, cwd.path)
-        path, target = args.rsplit("/")
+        path = keepass.absolute_path(path, cwd.path)
+        path, target = path.rsplit("/")
         new_cwd = keepass.find_group(path)
+        timeout = djinni_env["clipboard_timeout"]
 
-        if (new_cwd)
-            if (target.empty?)
-                usage
-            elsif (new_cwd.has_entry?(target))
-                target = new_cwd.entry_titles.select do |entry|
-                    target.downcase == entry.downcase
-                end.first
+        if (new_cwd.nil? || !new_cwd.has_entry?(target))
+            puts "Entry not found"
+            return
+        end
 
-                timeout = djinni_env["clipboard_timeout"]
-
-                case field
-                when "pass"
-                    new_cwd.entries[target].copy_password_to_clipboard
-                    keepass.send(
-                        "clear_clipboard_after_#{timeout}_seconds"
-                    )
-                when "url"
-                    new_cwd.entries[target].copy_url_to_clipboard
-                    keepass.send(
-                        "clear_clipboard_after_#{timeout}_seconds"
-                    )
-                when "user"
-                    new_cwd.entries[target].copy_username_to_clipboard
-                    keepass.send(
-                        "clear_clipboard_after_#{timeout}_seconds"
-                    )
-                end
-            else
-                puts "Entry \"#{args}\" doesn't exist!"
-            end
-        else
-            puts "Entry \"#{args}\" doesn't exist!"
+        case field
+        when "pass"
+            new_cwd.entries[target].copy_password_to_clipboard
+            keepass.send(
+                "clear_clipboard_after_#{timeout}_seconds"
+            )
+        when "url"
+            new_cwd.entries[target].copy_url_to_clipboard
+            keepass.send(
+                "clear_clipboard_after_#{timeout}_seconds"
+            )
+        when "user"
+            new_cwd.entries[target].copy_username_to_clipboard
+            keepass.send(
+                "clear_clipboard_after_#{timeout}_seconds"
+            )
         end
     end
 
     def initialize
-        @fields = [ "pass", "url", "user" ]
+        @fields = {
+            "pass" => "Password",
+            "url" => "URL",
+            "user" => "Username"
+        }
     end
 
     def tab_complete(input, djinni_env = {})
-        if (input.nil? || input.empty?)
-            puts
-            puts @fields
-            return ""
-        end
+        # "".split(" ", 2) => [] aka [nil, nil]
+        # " ".split(" ", 2) => [""] aka ["", nil]
+        # "pass".split(" ", 2) => ["pass"] aka ["pass", nil]
+        # "pass ".split(" ", 2) => ["pass", ""]
 
-        field, input = input.split(" ", 2)
+        field, path = input.split(" ", 2)
+        return [@fields, "", ""] if (field.nil? || field.empty?)
 
-        if (input.nil? || input.empty?)
-            @fields.each do |f|
-                break if (f == field)
-                if (f.start_with?(field))
-                    return "#{f} "
-                end
+        if (path.nil?)
+            completions = @fields.select do |f, d|
+                f.start_with?(field)
             end
+            return [completions, field, " "]
         end
-
-        input = "" if (input.nil?)
 
         cwd = djinni_env["cwd"]
-        input, groups, entries = cwd.fuzzy_find(input)
-        if (groups.empty? && entries.empty?)
-            return "#{field} #{input.gsub(%r{^#{cwd.path}/?}, "")}"
+        groups, entries = cwd.fuzzy_find(path)
+
+        completions = Hash.new
+        groups.each do |group|
+            completions[group] = "Group"
+        end
+        entries.each do |entry|
+            completions[entry] = "Entry"
         end
 
-        path, target = input.rsplit("/")
+        append = "/"
+        append = "" if (groups.empty?)
 
-        if (target.empty?)
-            if ((groups.length == 1) && entries.empty?)
-                input = "#{path}/#{groups.first}/"
-                return "#{field} #{input.gsub(%r{^#{cwd.path}/?}, "")}"
-            elsif (groups.empty? && (entries.length == 1))
-                input = "#{path}/#{entries.first}"
-                return "#{field} #{input.gsub(%r{^#{cwd.path}/?}, "")}"
-            end
-            puts
-            groups.each do |group|
-                puts "#{group}/"
-            end
-            puts entries
-            return "#{field} #{input.gsub(%r{^#{cwd.path}/?}, "")}"
-        end
-
-        if (!groups.empty?)
-            input = "#{path}/#{groups.first}/"
-        elsif (!entries.empty?)
-            input = "#{path}/#{entries.first}"
-        end
-
-        return "#{field} #{input.gsub(%r{^#{cwd.path}/?}, "")}"
+        return [completions, path.rsplit("/")[1], append]
     end
 
     def usage
         puts "#{aliases.join(", ")} <field> <entry>"
-        puts "\t#{description}."
+        puts "    #{description}."
         puts
         puts "FIELDS"
-        @fields.each do |field|
-            puts "\t#{field}"
+        @fields.each do |field, desc|
+            puts "    #{field}"
         end
     end
 end

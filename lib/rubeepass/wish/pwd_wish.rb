@@ -2,7 +2,7 @@ require "djinni"
 
 class PwdWish < Djinni::Wish
     def aliases
-        return [ "pwd" ]
+        return ["pwd"]
     end
 
     def description
@@ -10,15 +10,12 @@ class PwdWish < Djinni::Wish
     end
 
     def execute(args, djinni_env = {})
-        if (args.nil? || args.empty?)
-            puts djinni_env["cwd"].path
-        else
-            usage
-        end
+        puts djinni_env["cwd"].path if (args.empty?)
+        usage if (!args.empty?)
     end
 
     def usage
         puts aliases.join(", ")
-        puts "\t#{description}."
+        puts "    #{description}."
     end
 end

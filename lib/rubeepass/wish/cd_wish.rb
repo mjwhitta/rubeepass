@@ -3,7 +3,7 @@ require "djinni"
 
 class CDWish < Djinni::Wish
     def aliases
-        return [ "cd" ]
+        return ["cd"]
     end
 
     def description
@@ -15,47 +15,37 @@ class CDWish < Djinni::Wish
         cwd = djinni_env["cwd"]
         prompt_color = djinni_env["prompt_color"]
 
-        args = keepass.absolute_path(args, cwd.path)
-        new_cwd = keepass.find_group(args)
+        path = keepass.absolute_path(args, cwd.path)
+        new_cwd = keepass.find_group(path)
 
-        if (new_cwd)
-            djinni_env["cwd"] = new_cwd
-            if (prompt_color)
-                prompt = "rpass:#{new_cwd.name}> ".send(prompt_color)
-            else
-                prompt = "rpass:#{new_cwd.name}> "
-            end
-            djinni_env["djinni_prompt"] = prompt
-        else
-            puts "Group \"#{args}\" doesn't exist!"
+        if (new_cwd.nil?)
+            puts "Group not found"
+            return
         end
+
+        djinni_env["cwd"] = new_cwd
+        if (prompt_color)
+            prompt = "rpass:#{new_cwd.name}> ".send(prompt_color)
+        else
+            prompt = "rpass:#{new_cwd.name}> "
+        end
+        djinni_env["djinni_prompt"] = prompt
     end
 
     def tab_complete(input, djinni_env = {})
         cwd = djinni_env["cwd"]
-        input, groups = cwd.fuzzy_find(input)
-        return input.gsub(%r{^#{cwd.path}/?}, "") if (groups.empty?)
+        groups, entries = cwd.fuzzy_find(input)
 
-        path, dest = input.rsplit("/")
-
-        if (dest.empty?)
-            if (groups.length == 1)
-                input = "#{path}/#{groups.first}/"
-                return input.gsub(%r{^#{cwd.path}/?}, "")
-            end
-            puts
-            groups.each do |group|
-                puts "#{group}/"
-            end
-            return input.gsub(%r{^#{cwd.path}/?}, "")
+        completions = Hash.new
+        groups.each do |group|
+            completions[group] = "Group"
         end
 
-        input = "#{path}/#{groups.first}/"
-        return input.gsub(%r{^#{cwd.path}/?}, "")
+        return [completions, input.rsplit("/")[1], "/"]
     end
 
     def usage
         puts "#{aliases.join(", ")} [group]"
-        puts "\t#{description}."
+        puts "    #{description}."
     end
 end

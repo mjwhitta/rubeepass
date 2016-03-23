@@ -6,7 +6,6 @@ require "pathname"
 require "rexml/document"
 require "scoobydoo"
 require "shellwords"
-require "string"
 require "uri"
 require "zlib"
 
@@ -208,7 +207,11 @@ class RubeePass
 
         filehash = ""
         if (@keyfile)
-            contents = File.readlines(@keyfile).join.fix
+            require "string"
+            contents = File.readlines(@keyfile).join
+            if (contents.length != contents.bytesize)
+                contents = contents.unpack("H*").pack("H*")
+            end
             if (contents[0..4] == "<?xml")
                 # XML Key file
                 # My ugly attempt to parse a small XML Key file with a
@@ -352,7 +355,7 @@ class RubeePass
             data = StringIO.new(
                 cipher.update(encrypted) + cipher.final
             )
-        rescue OpenSSL::Cipher::CipherError => e
+        rescue OpenSSL::Cipher::CipherError
             raise Error::InvalidPassword.new
         end
 
@@ -455,7 +458,7 @@ class RubeePass
         return if (@thread.nil?)
         begin
             @thread.join
-        rescue Interrupt => e
+        rescue Interrupt
             puts
         end
     end

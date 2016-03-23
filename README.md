@@ -31,13 +31,14 @@ COMMAND    DESCRIPTION
 -------    -----------
 ?          Show helpful information for a command or commands
 bye        Quit
-cat        Show group contents
+cat        Show group/entry contents (showall includes passwords)
 cd         Change to new group
 clear      Clear the screen
 cls        Clear the screen
 copy       Copy specified field to the clipboard
 cp         Copy specified field to the clipboard
 dir        List groups and entries in current group
+echo       Echo specified field to stdout
 exit       Quit
 help       Show helpful information for a command or commands
 hist       Show history or execute commands from history
@@ -46,7 +47,8 @@ ls         List groups and entries in current group
 pwd        Show path of current group
 q          Quit
 quit       Quit
-show       Show group contents
+show       Show group/entry contents (showall includes passwords)
+showall    Show group/entry contents (showall includes passwords)
 ```
 
 ## Links
