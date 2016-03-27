@@ -15,7 +15,7 @@ class ShowWish < Djinni::Wish
 
         args = cwd.path if (args.empty?)
         path = keepass.absolute_path(args, cwd.path)
-        path, target = path.rsplit("/")
+        path, found, target = path.rpartition("/")
         new_cwd = keepass.find_group(path)
 
         if (new_cwd.nil?)
@@ -68,7 +68,7 @@ class ShowWish < Djinni::Wish
         append = "/"
         append = "" if (groups.empty?)
 
-        return [completions, input.rsplit("/")[1], append]
+        return [completions, input.rpartition("/")[-1], append]
     end
 
     def usage

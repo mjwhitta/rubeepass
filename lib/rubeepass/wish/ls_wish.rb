@@ -39,7 +39,7 @@ class LSWish < Djinni::Wish
             completions[group] = "Group"
         end
 
-        return [completions, input.rsplit("/")[1], "/"]
+        return [completions, input.rpartition("/")[-1], "/"]
     end
 
     def usage

@@ -31,7 +31,7 @@ class CopyWish < Djinni::Wish
         cwd = djinni_env["cwd"]
 
         path = keepass.absolute_path(path, cwd.path)
-        path, target = path.rsplit("/")
+        path, found, target = path.rpartition("/")
         new_cwd = keepass.find_group(path)
         timeout = djinni_env["clipboard_timeout"]
 
@@ -97,7 +97,7 @@ class CopyWish < Djinni::Wish
         append = "/"
         append = "" if (groups.empty?)
 
-        return [completions, path.rsplit("/")[1], append]
+        return [completions, path.rpartition("/")[-1], append]
     end
 
     def usage

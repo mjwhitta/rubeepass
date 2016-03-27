@@ -31,7 +31,7 @@ class EchoWish < Djinni::Wish
         cwd = djinni_env["cwd"]
 
         path = keepass.absolute_path(path, cwd.path)
-        path, target = path.rsplit("/")
+        path, found, target = path.rpartition("/")
         new_cwd = keepass.find_group(path)
 
         if (new_cwd.nil? || !new_cwd.has_entry?(target))
@@ -87,7 +87,7 @@ class EchoWish < Djinni::Wish
         append = "/"
         append = "" if (groups.empty?)
 
-        return [completions, path.rsplit("/")[1], append]
+        return [completions, path.rpartition("/")[-1], append]
     end
 
     def usage

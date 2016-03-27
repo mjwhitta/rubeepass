@@ -207,7 +207,6 @@ class RubeePass
 
         filehash = ""
         if (@keyfile)
-            require "string"
             contents = File.readlines(@keyfile).join
             if (contents.length != contents.bytesize)
                 contents = contents.unpack("H*").pack("H*")

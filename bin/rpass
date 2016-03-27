@@ -68,6 +68,8 @@ def parse(args)
     options["verbose"] = false
 
     parser = OptionParser.new do |opts|
+        opts.summary_width = 24
+
         opts.banner = "Usage: #{File.basename($0)} [OPTIONS] [kdbx]"
 
         opts.on(
@@ -284,12 +286,13 @@ rescue RubeePass::Error => e
 rescue Exception => e
     $stderr.puts
     $stderr.puts "Oops! Looks like an error has occured! If the " \
-        "error persists, file a bug at:".word_wrap
+        "error persists, file a bug at:"
     $stderr.puts
     $stderr.puts "    https://gitlab.com/mjwhitta/rubeepass/issues"
     $stderr.puts
     $stderr.puts "Maybe the message below will help. If not, you " \
-        "can use the --verbose flag to get a backtrace.".word_wrap
+        "can use the --verbose flag to get"
+    $stderr.puts "a backtrace."
 
     $stderr.puts e.message.white.on_red
     if (options["verbose"])

@@ -123,7 +123,7 @@ class RubeePass::Group
 
         search = @path if (search.nil? || search.empty?)
         search = @keepass.absolute_path(search, @path)
-        path, target = search.rsplit("/")
+        path, found, target = search.rpartition("/")
 
         new_cwd = find_group(path)
         return [[], []] if (new_cwd.nil?)
