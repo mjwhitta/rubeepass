@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
-require "colorize"
 require "djinni"
+require "hilighter"
 require "io/console"
 require "json_config"
 require "optparse"
@@ -111,7 +111,7 @@ def parse(args)
         end
 
         opts.on("--nocolor", "Disable colorized output") do
-            String.disable_colorization = true
+            Hilighter.disable
         end
 
         opts.on(
@@ -220,7 +220,7 @@ begin
         kdbx,
         password,
         keyfile,
-        !String.disable_colorization
+        !Hilighter.disable?
     )
 
     loop do
@@ -242,7 +242,7 @@ begin
                 kdbx,
                 password,
                 keyfile,
-                !String.disable_colorization
+                !Hilighter.disable?
             )
         end
     end

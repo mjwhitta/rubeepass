@@ -1,4 +1,4 @@
-require "colorize"
+require "hilighter"
 require "rexml/document"
 
 class RubeePass::Entry
@@ -17,28 +17,16 @@ class RubeePass::Entry
         return (self.title.downcase <=> other.title.downcase)
     end
 
-    def colorize_password(passwd)
-        return passwd if (!RubeePass.colorize?)
-        return passwd.light_red
-    end
-    private :colorize_password
-
-    def colorize_title(title)
-        return title if (!RubeePass.colorize?)
-        return title.light_green
-    end
-    private :colorize_title
-
     def details(level = 0, show_passwd = false)
         lvl = Array.new(level, "  ").join
 
         ret = Array.new
-        ret.push(colorize_title("#{lvl}Title    : #{@title}"))
+        ret.push(hilight_title("#{lvl}Title    : #{@title}"))
         # ret.push("#{lvl}UUID     : #{@uuid}")
         ret.push("#{lvl}Username : #{@username}")
         if (show_passwd)
             ret.push(
-                colorize_password("#{lvl}Password : #{password}")
+                hilight_password("#{lvl}Password : #{password}")
             )
         end
         ret.push("#{lvl}Url      : #{@url}")
@@ -141,6 +129,18 @@ class RubeePass::Entry
 
         return keepass.protected_decryptor.add_to_stream(data)
     end
+
+    def hilight_password(passwd)
+        return passwd if (!RubeePass.hilight?)
+        return passwd.light_red
+    end
+    private :hilight_password
+
+    def hilight_title(title)
+        return title if (!RubeePass.hilight?)
+        return title.light_green
+    end
+    private :hilight_title
 
     def initialize(
         group,

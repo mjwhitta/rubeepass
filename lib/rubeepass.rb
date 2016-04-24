@@ -72,9 +72,9 @@ class RubeePass
         end
     end
 
-    def self.colorize?
-        @@colorize ||= false
-        return @@colorize
+    def self.hilight?
+        @@hilight ||= false
+        return @@hilight
     end
 
     def copy_to_clipboard(string, err = true)
@@ -178,8 +178,8 @@ class RubeePass
         return @db.fuzzy_find(input)
     end
 
-    def initialize(kdbx, password, keyfile = nil, colorize = false)
-        @@colorize = colorize
+    def initialize(kdbx, password, keyfile = nil, hilight = false)
+        @@hilight = hilight
         @kdbx = Pathname.new(kdbx).expand_path
         @keyfile = nil
         @keyfile = Pathname.new(keyfile).expand_path if (keyfile)

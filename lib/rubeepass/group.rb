@@ -1,4 +1,4 @@
-require "colorize"
+require "hilighter"
 require "rexml/document"
 
 class RubeePass::Group
@@ -20,18 +20,12 @@ class RubeePass::Group
         return (self.name.downcase <=> other.name.downcase)
     end
 
-    def colorize_header(header)
-        return header if (!RubeePass.colorize?)
-        return header.light_blue
-    end
-    private :colorize_header
-
     def details(level = 0, show_passwd = false)
         out = Array.new
         lvl = Array.new(level, "  ").join
 
-        group_details = [ colorize_header(@path) ] if (level == 0)
-        group_details = [ colorize_header(@name) ] if (level != 0)
+        group_details = [ hilight_header(@path) ] if (level == 0)
+        group_details = [ hilight_header(@name) ] if (level != 0)
 
         group_details.each do |line|
             out.push("#{lvl}#{line}")
@@ -169,6 +163,12 @@ class RubeePass::Group
         end
         return false
     end
+
+    def hilight_header(header)
+        return header if (!RubeePass.hilight?)
+        return header.light_blue
+    end
+    private :hilight_header
 
     def initialize(
         group,

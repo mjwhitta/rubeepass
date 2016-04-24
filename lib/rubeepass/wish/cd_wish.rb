@@ -1,5 +1,5 @@
-require "colorize"
 require "djinni"
+require "hilighter"
 
 class CDWish < Djinni::Wish
     def aliases

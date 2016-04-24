@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
-gem "colorize"
 gem "djinni"
+gem "hilighter"
 gem "json_config"
 gem "minitest"
 gem "os"
