@@ -5,6 +5,7 @@ require "hilighter"
 require "io/console"
 require "json_config"
 require "optparse"
+require "pathname"
 require "rubeepass"
 
 class RubeePassExit
@@ -25,15 +26,17 @@ class RubeePassConfig < JSONConfig
     end
 
     def last_kdbx(kdbx = nil)
-        set("last_kdbx", kdbx.to_s) if (kdbx)
-        kdbx = get("last_kdbx")
+        set("last_kdbx", Pathname.new(kdbx).expand_path) if (kdbx)
+        kdbx = get("last_kdbx").to_s
         return nil if (kdbx.nil? || kdbx.empty?)
         return kdbx
     end
 
     def last_keyfile(keyfile = nil)
-        set("last_keyfile", keyfile.to_s) if (keyfile)
-        keyfile = get("last_keyfile")
+        if (keyfile)
+            set("last_keyfile", Pathname.new(keyfile).expand_path)
+        end
+        keyfile = get("last_keyfile").to_s
         return nil if (keyfile.nil? || keyfile.empty?)
         return keyfile
     end
@@ -210,12 +213,12 @@ end
 
 options = parse(ARGV)
 
-kdbx = options["kdbx"]
-password = options["password"] if (options["password"])
-password = get_password if (options["password"].nil?)
-keyfile = options["keyfile"]
-
 begin
+    kdbx = options["kdbx"]
+    password = options["password"] if (options["password"])
+    password = get_password if (options["password"].nil?)
+    keyfile = options["keyfile"]
+
     keepass = RubeePass.new(
         kdbx,
         password,
