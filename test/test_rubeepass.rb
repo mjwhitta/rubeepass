@@ -34,22 +34,19 @@ class RPassTest < Minitest::Test
             @bank.path,
             @keepass.absolute_path(@bank.path, @internet.path)
         )
-        assert_equal(
-            "/asdf/Ban",
-            @keepass.absolute_path("/asdf/Ban")
-        )
+        assert_equal("/asdf/Ban", @keepass.absolute_path("/asdf/Ban"))
+    end
+
+    def test_attributes
+        assert(@chase.has_attribute?("Password"))
+        assert_equal(@chase.password, @chase.attribute("Password"))
+        assert_equal(@chase.password, @chase.attributes["Password"])
     end
 
     def test_find_group
         assert_equal(@asdf, @keepass.find_group("asdf"))
-        assert_equal(
-            @internet,
-            @asdf.find_group("Internet")
-        )
-        assert_equal(
-            @internet,
-            @keepass.find_group(@internet.path)
-        )
+        assert_equal(@internet, @asdf.find_group("Internet"))
+        assert_equal(@internet, @keepass.find_group(@internet.path))
         assert_equal(@internet, @bank.find_group("../Internet"))
         assert_equal(
             @bank,
@@ -84,11 +81,5 @@ class RPassTest < Minitest::Test
         assert_equal("chase_password", @chase.password)
         assert_equal("facebook_password", @facebook.password)
         assert_equal("google_password", @google.password)
-    end
-
-    def test_attributes
-        assert(@chase.has_attribute?("Password"))
-        assert_equal(@chase.password, @chase.attribute("Password"))
-        assert_equal(@chase.password, @chase.attributes["Password"])
     end
 end

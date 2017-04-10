@@ -8,10 +8,10 @@ class RubeePass::Entry
     attr_accessor :keepass
     attr_accessor :notes
     attr_accessor :password
+    attr_accessor :path
     attr_accessor :title
     attr_accessor :url
     attr_accessor :username
-    attr_accessor :path
     attr_accessor :uuid
 
     def ==(other)
@@ -50,20 +50,17 @@ class RubeePass::Entry
     end
 
     def self.from_xml(keepass, parent, xml)
-        attributes = {}
+        attrs = Hash.new
 
-        uuid = xml.elements["UUID"].text
-        uuid = "" if (uuid.nil?)
+        uuid = xml.elements["UUID"].text || ""
 
         xml.elements.each("String") do |elem|
             key = elem.elements["Key"].text
             value = elem.elements["Value"]
 
+            attrs[key] = value.text || ""
             if (value.attributes["Protected"] == "True")
-                attributes[key] = handle_protected(keepass, value.text)
-            else
-                attributes[key] = value.text
-                attributes[key] = "" if (attributes[key].nil?)
+                attrs[key] = handle_protected(keepass, value.text)
             end
         end
 
@@ -74,12 +71,7 @@ class RubeePass::Entry
             end
         end
 
-        return RubeePass::Entry.new(
-            parent,
-            keepass,
-            attributes,
-            uuid
-        )
+        return RubeePass::Entry.new(parent, keepass, attrs, uuid)
     end
 
     def self.handle_protected(keepass, base64)
@@ -171,7 +163,9 @@ class RubeePass::Entry
         return "" unless (has_attribute?(attr))
 
         begin
-            return @keepass.protected_decryptor.get_password(@attributes[attr])
+            return @keepass.protected_decryptor.get_password(
+                @attributes[attr]
+            )
         rescue
             return @attributes[attr]
         end

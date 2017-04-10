@@ -251,7 +251,9 @@ begin
     end
 
     djinni = Djinni.new
-    djinni.load_wishes("#{File.dirname(__FILE__)}/../lib/rubeepass/wish")
+    djinni.load_wishes(
+        "#{File.dirname(__FILE__)}/../lib/rubeepass/wish"
+    )
 
     if (options["command"])
         djinni.grant_wish(
