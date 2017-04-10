@@ -85,4 +85,10 @@ class RPassTest < Minitest::Test
         assert_equal("facebook_password", @facebook.password)
         assert_equal("google_password", @google.password)
     end
+
+    def test_attributes
+        assert(@chase.has_attribute?("Password"))
+        assert_equal(@chase.password, @chase.attribute("Password"))
+        assert_equal(@chase.password, @chase.attributes["Password"])
+    end
 end

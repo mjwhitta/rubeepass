@@ -6,6 +6,11 @@ class RubeePass::Entry
 
     attr_accessor :group
     attr_accessor :keepass
+    attr_accessor :notes
+    attr_accessor :password
+    attr_accessor :title
+    attr_accessor :url
+    attr_accessor :username
     attr_accessor :path
     attr_accessor :uuid
 
@@ -26,7 +31,7 @@ class RubeePass::Entry
         ret.push("#{lvl}Username : #{@username}")
         if (show_passwd)
             ret.push(
-                hilight_password("#{lvl}Password : #{password}")
+                hilight_password("#{lvl}Password : #{@password}")
             )
         end
         ret.push("#{lvl}Url      : #{@url}")
@@ -45,53 +50,20 @@ class RubeePass::Entry
     end
 
     def self.from_xml(keepass, parent, xml)
-        notes = ""
-        password = ""
-        title = ""
-        url = ""
-        username = ""
+        attributes = {}
 
         uuid = xml.elements["UUID"].text
         uuid = "" if (uuid.nil?)
 
         xml.elements.each("String") do |elem|
+            key = elem.elements["Key"].text
             value = elem.elements["Value"]
-            case elem.elements["Key"].text
-            when "Notes"
-                if (value.attributes["Protected"] == "True")
-                    notes = handle_protected(keepass, value.text)
-                else
-                    notes = value.text
-                    notes = "" if (notes.nil?)
-                end
-            when "Password"
-                if (value.attributes["Protected"] == "True")
-                    password = handle_protected(keepass, value.text)
-                else
-                    password = value.text
-                    password = "" if (password.nil?)
-                end
-            when "Title"
-                if (value.attributes["Protected"] == "True")
-                    title = handle_protected(keepass, value.text)
-                else
-                    title = value.text
-                    title = "" if (title.nil?)
-                end
-            when "URL"
-                if (value.attributes["Protected"] == "True")
-                    url = handle_protected(keepass, value.text)
-                else
-                    url = value.text
-                    url = "" if (url.nil?)
-                end
-            when "UserName"
-                if (value.attributes["Protected"] == "True")
-                    username = handle_protected(keepass, value.text)
-                else
-                    username = value.text
-                    username = "" if (username.nil?)
-                end
+
+            if (value.attributes["Protected"] == "True")
+                attributes[key] = handle_protected(keepass, value.text)
+            else
+                attributes[key] = value.text
+                attributes[key] = "" if (attributes[key].nil?)
             end
         end
 
@@ -105,11 +77,7 @@ class RubeePass::Entry
         return RubeePass::Entry.new(
             parent,
             keepass,
-            notes,
-            password,
-            title,
-            url,
-            username,
+            attributes,
             uuid
         )
     end
@@ -142,23 +110,17 @@ class RubeePass::Entry
     end
     private :hilight_title
 
-    def initialize(
-        group,
-        keepass,
-        notes,
-        password,
-        title,
-        url,
-        username,
-        uuid
-    )
+    def initialize(group, keepass, attributes, uuid)
         @group = group
         @keepass = keepass
-        @notes = notes
-        @password = password
-        @title = title
-        @url = url
-        @username = username
+        @attributes = attributes
+
+        @notes = attribute("Notes")
+        @password = attribute("Password")
+        @title = attribute("Title")
+        @url = attribute("URL")
+        @username = attribute("UserName")
+
         @uuid = uuid
 
         @path = @title
@@ -176,7 +138,7 @@ class RubeePass::Entry
             )
             case method_name
             when "password"
-                @keepass.copy_to_clipboard(password)
+                @keepass.copy_to_clipboard(@password)
             when "url"
                 @keepass.copy_to_clipboard(@url)
             when "username"
@@ -187,7 +149,7 @@ class RubeePass::Entry
         elsif (method_name.match(/^echo_.+$/))
             case method_name.to_s.gsub(/^echo_/, "")
             when "password"
-                puts password
+                puts @password
             when "url"
                 puts @url
             when "username"
@@ -200,58 +162,30 @@ class RubeePass::Entry
         end
     end
 
-    def notes
+    def has_attribute?(attr)
+        !@attributes[attr].nil?
+    end
+
+    def attribute(attr)
         return nil if (@keepass.nil?)
-        return "" if (@notes.nil?)
+        return "" unless (has_attribute?(attr))
+
         begin
-            return @keepass.protected_decryptor.get_password(@notes)
+            return @keepass.protected_decryptor.get_password(@attributes[attr])
         rescue
-            return @notes
+            return @attributes[attr]
         end
     end
 
-    def password
+    def attributes
         return nil if (@keepass.nil?)
-        return "" if (@password.nil?)
-        begin
-            return @keepass.protected_decryptor.get_password(
-                @password
-            )
-        rescue
-            return @password
-        end
-    end
 
-    def title
-        return nil if (@keepass.nil?)
-        return "" if (@title.nil?)
-        begin
-            return @keepass.protected_decryptor.get_password(@title)
-        rescue
-            return @title
+        attributes = {}
+        @attributes.each do |key, value|
+            attributes[key] = attribute(key)
         end
-    end
 
-    def url
-        return nil if (@keepass.nil?)
-        return "" if (@url.nil?)
-        begin
-            return @keepass.protected_decryptor.get_password(@url)
-        rescue
-            return @url
-        end
-    end
-
-    def username
-        return nil if (@keepass.nil?)
-        return "" if (@username.nil?)
-        begin
-            return @keepass.protected_decryptor.get_password(
-                @username
-            )
-        rescue
-            return @username
-        end
+        return attributes
     end
 
     def to_s
