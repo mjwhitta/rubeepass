@@ -174,7 +174,7 @@ class RubeePass::Entry
     def attributes
         return nil if (@keepass.nil?)
 
-        attributes = {}
+        attributes = Hash.new
         @attributes.each do |key, value|
             attributes[key] = attribute(key)
         end
