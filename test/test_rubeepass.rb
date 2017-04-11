@@ -37,6 +37,10 @@ class RPassTest < Minitest::Test
         assert_equal("/asdf/Ban", @keepass.absolute_path("/asdf/Ban"))
     end
 
+    def test_additional_attributes
+        assert_equal({}, @chase.additional_attributes)
+    end
+
     def test_attributes
         assert(@chase.has_attribute?("Password"))
         assert_equal(@chase.password, @chase.attribute("Password"))

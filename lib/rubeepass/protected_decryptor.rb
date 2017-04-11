@@ -6,7 +6,7 @@ class RubeePass::ProtectedDecryptor
         return (@ciphertext.length - 1)
     end
 
-    def get_password(index)
+    def decrypt(index)
         return nil if (@iv.nil? || @key.nil?)
         return nil if ((index < 0) || (index >= @ciphertext.length))
 

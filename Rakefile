@@ -1,4 +1,3 @@
-require "hilighter"
 require "rake/testtask"
 
 task :default => :gem
@@ -7,11 +6,6 @@ desc "Clean up"
 task :clean do
     system("rm -f *.gem Gemfile.lock")
     system("chmod -R go-rwx bin lib")
-end
-
-desc "Show colors from hilighter"
-task :colors do
-    Hilighter.sample
 end
 
 desc "Test example project"

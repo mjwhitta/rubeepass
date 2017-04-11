@@ -22,6 +22,36 @@ class RubeePass::Entry
         return (self.title.downcase <=> other.title.downcase)
     end
 
+    def additional_attributes
+        return attributes.select do |key, value|
+            key.match(/^(Notes|Password|Title|URL|UserName)$/).nil?
+        end
+    end
+
+    def attribute(attr)
+        return nil if (@keepass.nil?)
+        return "" if (!has_attribute?(attr))
+
+        begin
+            return @keepass.protected_decryptor.decrypt(
+                @attributes[attr]
+            )
+        rescue
+            return @attributes[attr]
+        end
+    end
+
+    def attributes
+        return nil if (@keepass.nil?)
+
+        attrs = Hash.new
+        @attributes.each do |key, value|
+            attrs[key] = attribute(key)
+        end
+
+        return attrs
+    end
+
     def details(level = 0, show_passwd = false)
         lvl = Array.new(level, "  ").join
 
@@ -75,8 +105,9 @@ class RubeePass::Entry
     end
 
     def self.handle_protected(keepass, base64)
-        data = nil
         return nil if (base64.nil?)
+
+        data = nil
         begin
             data = base64.unpack("m*")[0]
             if (data.length != data.bytesize)
@@ -88,6 +119,10 @@ class RubeePass::Entry
         raise Error::InvalidProtectedData.new if (data.nil?)
 
         return keepass.protected_decryptor.add_to_stream(data)
+    end
+
+    def has_attribute?(attr)
+        return !@attributes[attr].nil?
     end
 
     def hilight_password(passwd)
@@ -151,40 +186,6 @@ class RubeePass::Entry
             end
         else
             super
-        end
-    end
-
-    def has_attribute?(attr)
-        !@attributes[attr].nil?
-    end
-
-    def attribute(attr)
-        return nil if (@keepass.nil?)
-        return "" unless (has_attribute?(attr))
-
-        begin
-            return @keepass.protected_decryptor.get_password(
-                @attributes[attr]
-            )
-        rescue
-            return @attributes[attr]
-        end
-    end
-
-    def attributes
-        return nil if (@keepass.nil?)
-
-        attributes = Hash.new
-        @attributes.each do |key, value|
-            attributes[key] = attribute(key)
-        end
-
-        return attributes
-    end
-
-    def additional_attributes
-        return attributes.select do |key, value|
-            !%w(Notes Password Title URL UserName).include?(key)
         end
     end
 
