@@ -1,19 +1,18 @@
+require "base64"
 require "rexml/document"
 require "zlib"
 
 class RubeePass::AttachmentDecoder
-    def find_attachment(ref)
+    def get_attachment(ref)
         @binaries.elements.each("Binary") do |elem|
             if elem.attributes["ID"] == ref
-                return elem.text
+                if elem.attributes["Compressed"].nil?
+                    return Base64.decode64(elem.text)
+                else
+                    return parse_gzip(elem.text)
+                end
             end
         end
-    end
-    private :find_attachment
-
-    def get_attachment(ref)
-        attachment = find_attachment(ref)
-        return parse_gzip(attachment)
     end
 
     def initialize(binaries)
@@ -21,7 +20,7 @@ class RubeePass::AttachmentDecoder
     end
 
     def parse_gzip(attachment)
-        attachment = attachment.unpack("m*")[0]
+        attachment = Base64.decode64(attachment)
         return Zlib::GzipReader.new(StringIO.new(attachment)).read
     end
     private :parse_gzip
