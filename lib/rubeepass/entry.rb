@@ -182,6 +182,12 @@ class RubeePass::Entry
         return attributes
     end
 
+    def additional_attributes
+        return attributes.select do |key, value|
+            !%w(Notes Password Title URL UserName).include?(key)
+        end
+    end
+
     def to_s
         return details
     end
