@@ -10,7 +10,7 @@ class CDWish < Djinni::Wish
         return "Change to new group"
     end
 
-    def execute(args, djinni_env = {})
+    def execute(args, djinni_env = Hash.new)
         keepass = djinni_env["keepass"]
         cwd = djinni_env["cwd"]
         prompt_color = djinni_env["prompt_color"]
@@ -32,7 +32,7 @@ class CDWish < Djinni::Wish
         djinni_env["djinni_prompt"] = prompt
     end
 
-    def tab_complete(input, djinni_env = {})
+    def tab_complete(input, djinni_env = Hash.new)
         cwd = djinni_env["cwd"]
         groups, entries = cwd.fuzzy_find(input)
 

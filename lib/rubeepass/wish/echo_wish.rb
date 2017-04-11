@@ -9,7 +9,7 @@ class EchoWish < Djinni::Wish
         return "Echo specified field to stdout"
     end
 
-    def execute(args, djinni_env = {})
+    def execute(args, djinni_env = Hash.new)
         # "".split(" ", 2) => [] aka [nil, nil]
         # " ".split(" ", 2) => [""] aka ["", nil]
         # "pass".split(" ", 2) => ["pass"] aka ["pass", nil]
@@ -57,7 +57,7 @@ class EchoWish < Djinni::Wish
         }
     end
 
-    def tab_complete(input, djinni_env = {})
+    def tab_complete(input, djinni_env = Hash.new)
         # "".split(" ", 2) => [] aka [nil, nil]
         # " ".split(" ", 2) => [""] aka ["", nil]
         # "pass".split(" ", 2) => ["pass"] aka ["pass", nil]

@@ -9,7 +9,7 @@ class LSWish < Djinni::Wish
         return "List groups and entries in current group"
     end
 
-    def execute(args, djinni_env = {})
+    def execute(args, djinni_env = Hash.new)
         keepass = djinni_env["keepass"]
         cwd = djinni_env["cwd"]
 
@@ -30,7 +30,7 @@ class LSWish < Djinni::Wish
         end
     end
 
-    def tab_complete(input, djinni_env = {})
+    def tab_complete(input, djinni_env = Hash.new)
         cwd = djinni_env["cwd"]
         groups, entries = cwd.fuzzy_find(input)
 

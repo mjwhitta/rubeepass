@@ -9,7 +9,7 @@ class CopyWish < Djinni::Wish
         return "Copy specified field to the clipboard"
     end
 
-    def execute(args, djinni_env = {})
+    def execute(args, djinni_env = Hash.new)
         # "".split(" ", 2) => [] aka [nil, nil]
         # " ".split(" ", 2) => [""] aka ["", nil]
         # "pass".split(" ", 2) => ["pass"] aka ["pass", nil]
@@ -67,7 +67,7 @@ class CopyWish < Djinni::Wish
         }
     end
 
-    def tab_complete(input, djinni_env = {})
+    def tab_complete(input, djinni_env = Hash.new)
         # "".split(" ", 2) => [] aka [nil, nil]
         # " ".split(" ", 2) => [""] aka ["", nil]
         # "pass".split(" ", 2) => ["pass"] aka ["pass", nil]

@@ -113,14 +113,14 @@ class RubeePass::Group
     end
 
     def fuzzy_find(search)
-        return [[], []] if (@keepass.nil?)
+        return [Array.new, Array.new] if (@keepass.nil?)
 
         search = @path if (search.nil? || search.empty?)
         search = @keepass.absolute_path(search, @path)
         path, found, target = search.rpartition("/")
 
         new_cwd = find_group(path)
-        return [[], []] if (new_cwd.nil?)
+        return [Array.new, Array.new] if (new_cwd.nil?)
 
         if (new_cwd.has_group?(target))
             new_cwd = new_cwd.groups[target]

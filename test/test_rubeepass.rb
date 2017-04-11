@@ -38,7 +38,7 @@ class RPassTest < Minitest::Test
     end
 
     def test_additional_attributes
-        assert_equal({}, @chase.additional_attributes)
+        assert_equal(Hash.new, @chase.additional_attributes)
     end
 
     def test_attributes

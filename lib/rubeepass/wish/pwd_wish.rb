@@ -9,7 +9,7 @@ class PwdWish < Djinni::Wish
         return "Show path of current group"
     end
 
-    def execute(args, djinni_env = {})
+    def execute(args, djinni_env = Hash.new)
         puts djinni_env["cwd"].path if (args.empty?)
         usage if (!args.empty?)
     end

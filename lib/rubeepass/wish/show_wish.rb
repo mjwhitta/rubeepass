@@ -9,7 +9,7 @@ class ShowWish < Djinni::Wish
         "Show group/entry contents (showall includes passwords)"
     end
 
-    def execute(args, djinni_env = {})
+    def execute(args, djinni_env = Hash.new)
         keepass = djinni_env["keepass"]
         cwd = djinni_env["cwd"]
 
@@ -53,7 +53,7 @@ class ShowWish < Djinni::Wish
         end
     end
 
-    def tab_complete(input, djinni_env = {})
+    def tab_complete(input, djinni_env = Hash.new)
         cwd = djinni_env["cwd"]
         groups, entries = cwd.fuzzy_find(input)
 
