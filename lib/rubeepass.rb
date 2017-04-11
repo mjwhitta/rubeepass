@@ -26,6 +26,7 @@ class RubeePass
     @@MAGIC_SIG2 = 0xb54bfb67
     @@VERSION = 0x00030000
 
+    attr_reader :attachment_decoder
     attr_reader :db
     attr_reader :gzip
     attr_reader :protected_decryptor
@@ -337,6 +338,10 @@ class RubeePass
             raise Error::InvalidXML.new
         end
 
+        @attachment_decoder = AttachmentDecoder.new(
+            doc.elements["KeePassFile/Meta/Binaries"]
+        )
+
         root = doc.elements["KeePassFile/Root"]
         @db = Group.from_xml(self, nil, root)
     end
@@ -463,6 +468,7 @@ class RubeePass
     end
 end
 
+require "rubeepass/attachment_decoder"
 require "rubeepass/entry"
 require "rubeepass/error"
 require "rubeepass/group"

@@ -28,6 +28,23 @@ class RubeePass::Entry
         end
     end
 
+    def attachment(name)
+        return nil if (@keepass.nil?)
+        return nil unless (has_attachment?(name))
+
+        return @keepass.attachment_decoder.get_attachment(@attachments[name])
+    end
+
+    def attachments
+        attachments = Hash.new
+
+        @attachments.each do |key, value|
+            attachments[key] = attachment(key)
+        end
+
+        return attachments
+    end
+
     def attribute(attr)
         return nil if (@keepass.nil?)
         return "" if (!has_attribute?(attr))
@@ -81,6 +98,7 @@ class RubeePass::Entry
 
     def self.from_xml(keepass, parent, xml)
         attrs = Hash.new
+        attachs = Hash.new
 
         uuid = xml.elements["UUID"].text || ""
 
@@ -101,7 +119,13 @@ class RubeePass::Entry
             end
         end
 
-        return RubeePass::Entry.new(parent, keepass, attrs, uuid)
+        xml.elements.each("Binary") do |elem|
+            key = elem.elements["Key"].text
+            value = elem.elements["Value"].attributes["Ref"]
+            attachs[key] = value
+        end
+
+        return RubeePass::Entry.new(parent, keepass, attrs, attachs, uuid)
     end
 
     def self.handle_protected(keepass, base64)
@@ -121,6 +145,10 @@ class RubeePass::Entry
         return keepass.protected_decryptor.add_to_stream(data)
     end
 
+    def has_attachment?(name)
+        !@attachments[name].nil?
+    end
+
     def has_attribute?(attr)
         return !@attributes[attr].nil?
     end
@@ -137,10 +165,11 @@ class RubeePass::Entry
     end
     private :hilight_title
 
-    def initialize(group, keepass, attributes, uuid)
+    def initialize(group, keepass, attributes, attachments, uuid)
         @group = group
         @keepass = keepass
         @attributes = attributes
+        @attachments = attachments
 
         @notes = attribute("Notes")
         @password = attribute("Password")
