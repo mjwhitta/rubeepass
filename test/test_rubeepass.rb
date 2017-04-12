@@ -43,12 +43,16 @@ class RPassTest < Minitest::Test
 
     def test_attachments
         assert(@chase.has_attachment?("rick.txt"))
+        assert(!@chase.has_attachment?("Rick.txt"))
+        assert(@chase.has_attachment_like?("Rick.txt"))
         assert_equal("roller\n", @chase.attachment("rick.txt"))
         assert_equal({"rick.txt" => "roller\n"}, @chase.attachments)
     end
 
     def test_attributes
         assert(@chase.has_attribute?("Password"))
+        assert(!@chase.has_attribute?("password"))
+        assert(@chase.has_attribute_like?("password"))
         assert_equal(@chase.password, @chase.attribute("Password"))
         assert_equal(@chase.password, @chase.attributes["Password"])
     end

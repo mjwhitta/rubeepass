@@ -162,8 +162,20 @@ class RubeePass::Entry
         return !@attachments[name].nil?
     end
 
+    def has_attachment_like?(name)
+        return @attachments.any? do |k, v|
+            k.downcase == name.downcase
+        end
+    end
+
     def has_attribute?(attr)
         return !@attributes[attr].nil?
+    end
+
+    def has_attribute_like?(attr)
+        return @attributes.any? do |k, v|
+            k.downcase == attr.downcase
+        end
     end
 
     def hilight_attr(title)
