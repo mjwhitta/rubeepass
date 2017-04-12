@@ -37,14 +37,14 @@ class RPassTest < Minitest::Test
         assert_equal("/asdf/Ban", @keepass.absolute_path("/asdf/Ban"))
     end
 
-    def test_attachments
-        assert(@chase.has_attachment?("rick.txt"))
-        assert_equal(@chase.attachment("rick.txt"), "roller\n")
-        assert_equal(@chase.attachments, { "rick.txt" => "roller\n" })
-    end
-
     def test_additional_attributes
         assert_equal(Hash.new, @chase.additional_attributes)
+    end
+
+    def test_attachments
+        assert(@chase.has_attachment?("rick.txt"))
+        assert_equal("roller\n", @chase.attachment("rick.txt"))
+        assert_equal({"rick.txt" => "roller\n"}, @chase.attachments)
     end
 
     def test_attributes

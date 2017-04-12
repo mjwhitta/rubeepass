@@ -1,5 +1,4 @@
-class RubeePass::Error < RuntimeError
-end
+class RubeePass::Error < RuntimeError; end
 
 require "rubeepass/error/file_not_found"
 require "rubeepass/error/file_not_readable"

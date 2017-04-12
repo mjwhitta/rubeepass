@@ -22,10 +22,10 @@ class RubeePass::Group
 
     def details(level = 0, show_passwd = false)
         out = Array.new
-        lvl = Array.new(level, "  ").join
+        lvl = "  " * level
 
-        group_details = [ hilight_header(@path) ] if (level == 0)
-        group_details = [ hilight_header(@name) ] if (level != 0)
+        group_details = [hilight_header(@path)] if (level == 0)
+        group_details = [hilight_header(@name)] if (level != 0)
 
         group_details.each do |line|
             out.push("#{lvl}#{line}")
@@ -35,8 +35,11 @@ class RubeePass::Group
             out.push(group.details(level + 1, show_passwd))
         end
 
+        div = "-" * (70 - lvl.length - 2)
+        out.push("#{lvl}  #{div}") if (!@entries.empty?)
         @entries.values.each do |entry|
             out.push(entry.details(level + 1, show_passwd))
+            out.push("#{lvl}  #{div}")
         end
 
         return out.join("\n")
@@ -67,17 +70,14 @@ class RubeePass::Group
     end
 
     def self.from_xml(keepass, parent, xml)
-        name = xml.elements["Name"].text if (parent)
-        name = "" if (name.nil?)
-        name = "/" if (parent.nil?)
+        name = "/"
+        name = xml.elements["Name"].text || "" if (parent)
 
-        notes = xml.elements["Notes"].text if (parent)
-        notes = "" if (notes.nil?)
-        notes = "" if (parent.nil?)
+        notes = ""
+        notes = xml.elements["Notes"].text || "" if (parent)
 
-        uuid = xml.elements["UUID"].text if (parent)
-        uuid = "" if (uuid.nil?)
-        uuid = "" if (parent.nil?)
+        uuid = ""
+        uuid = xml.elements["UUID"].text || "" if (parent)
 
         group = RubeePass::Group.new(
             parent,
@@ -151,22 +151,20 @@ class RubeePass::Group
     end
 
     def has_entry?(title)
-        entry_titles.each do |entry|
-            return true if (title.downcase == entry.downcase)
+        return entry_titles.any? do |entry|
+            entry.downcase == title.downcase
         end
-        return false
     end
 
     def has_group?(name)
-        group_names.each do |group|
-            return true if (name.downcase == group.downcase)
+        return group_names.any? do |group|
+            group.downcase == name.downcase
         end
-        return false
     end
 
     def hilight_header(header)
         return header if (!RubeePass.hilight?)
-        return header.light_blue
+        return header.cyan
     end
     private :hilight_header
 

@@ -32,13 +32,11 @@ class RubeePassConfig < JSONConfig
         return kdbx
     end
 
-    def last_keyfile(keyfile = nil)
-        if (keyfile)
-            set("last_keyfile", Pathname.new(keyfile).expand_path)
-        end
-        keyfile = get("last_keyfile").to_s
-        return nil if (keyfile.nil? || keyfile.empty?)
-        return keyfile
+    def last_keyfile(kf = nil)
+        set("last_keyfile", Pathname.new(kf).expand_path) if (kf)
+        kf = get("last_keyfile").to_s
+        return nil if (kf.nil? || kf.empty?)
+        return kf
     end
 
     def timeout(t = nil)

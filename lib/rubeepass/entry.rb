@@ -24,15 +24,16 @@ class RubeePass::Entry
 
     def additional_attributes
         return attributes.select do |key, value|
-            key.match(/^(Notes|Password|Title|URL|UserName)$/).nil?
+            key.match(/^(notes|password|title|url|username)$/i).nil?
         end
     end
 
     def attachment(name)
         return nil if (@keepass.nil?)
-        return nil unless (has_attachment?(name))
-
-        return @keepass.attachment_decoder.get_attachment(@attachments[name])
+        return nil if (!has_attachment?(name))
+        return @keepass.attachment_decoder.get_attachment(
+            @attachments[name]
+        )
     end
 
     def attachments
@@ -70,30 +71,36 @@ class RubeePass::Entry
     end
 
     def details(level = 0, show_passwd = false)
-        lvl = Array.new(level, "  ").join
+        lvl = "  " * level
 
-        ret = Array.new
-        ret.push(hilight_title("#{lvl}Title    : #{@title}"))
-        # ret.push("#{lvl}UUID     : #{@uuid}")
-        ret.push("#{lvl}Username : #{@username}")
+        r = Array.new
+        r.push("#{lvl}#{hilight_attr("Title:")} #{@title}")
+        # r.push("#{lvl}#{hilight_attr("UUID:")} #{@uuid}")
+        r.push("#{lvl}#{hilight_attr("Username:")} #{@username}")
         if (show_passwd)
-            ret.push(
-                hilight_password("#{lvl}Password : #{@password}")
+            r.push(
+                "#{lvl}#{hilight_password("Password:")} #{@password}"
             )
         end
-        ret.push("#{lvl}Url      : #{@url}")
+        r.push("#{lvl}#{hilight_attr("URL:")} #{@url}")
 
-        first = true
+        r.push("#{lvl}#{hilight_attr("Notes:")}") if (!@notes.empty?)
         @notes.each_line do |line|
-            if (first)
-                ret.push("#{lvl}Notes    : #{line.strip}")
-                first = false
-            else
-                ret.push("#{lvl}           #{line.strip}")
-            end
+            r.push("#{lvl}  #{line.strip}")
         end
 
-        return ret.join("\n")
+        additional_attributes.each do |k, v|
+            r.push("#{lvl}#{hilight_attr("#{k}:")} #{v}")
+        end
+
+        if (!@attachments.empty?)
+            r.push("#{lvl}#{hilight_attr("Attachments:")}")
+        end
+        @attachments.keys.each do |name|
+            r.push("#{lvl}  #{name}")
+        end
+
+        return r.join("\n")
     end
 
     def self.from_xml(keepass, parent, xml)
@@ -125,7 +132,13 @@ class RubeePass::Entry
             attachs[key] = value
         end
 
-        return RubeePass::Entry.new(parent, keepass, attrs, attachs, uuid)
+        return RubeePass::Entry.new(
+            parent,
+            keepass,
+            attrs,
+            attachs,
+            uuid
+        )
     end
 
     def self.handle_protected(keepass, base64)
@@ -146,24 +159,28 @@ class RubeePass::Entry
     end
 
     def has_attachment?(name)
-        !@attachments[name].nil?
+        return @attachments.any? do |k, v|
+            k.downcase == name.downcase
+        end
     end
 
     def has_attribute?(attr)
-        return !@attributes[attr].nil?
+        return @attributes.any? do |k, v|
+            k.downcase == attr.downcase
+        end
     end
+
+    def hilight_attr(title)
+        return title if (!RubeePass.hilight?)
+        return title.light_green
+    end
+    private :hilight_attr
 
     def hilight_password(passwd)
         return passwd if (!RubeePass.hilight?)
         return passwd.light_red
     end
     private :hilight_password
-
-    def hilight_title(title)
-        return title if (!RubeePass.hilight?)
-        return title.light_green
-    end
-    private :hilight_title
 
     def initialize(group, keepass, attributes, attachments, uuid)
         @group = group
