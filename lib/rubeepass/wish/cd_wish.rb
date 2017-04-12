@@ -16,7 +16,7 @@ class CDWish < Djinni::Wish
         prompt_color = djinni_env["prompt_color"]
 
         path = keepass.absolute_path(args, cwd.path)
-        new_cwd = keepass.find_group(path)
+        new_cwd = keepass.find_group_like(path)
 
         if (new_cwd.nil?)
             puts "Group not found"

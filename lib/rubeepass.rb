@@ -175,6 +175,10 @@ class RubeePass
         return @db.find_group(path)
     end
 
+    def find_group_like(path)
+        return @db.find_group(path, true)
+    end
+
     def fuzzy_find(input)
         return @db.fuzzy_find(input)
     end

@@ -32,27 +32,34 @@ class CopyWish < Djinni::Wish
 
         path = keepass.absolute_path(path, cwd.path)
         path, found, target = path.rpartition("/")
-        new_cwd = keepass.find_group(path)
+        new_cwd = keepass.find_group_like(path)
         timeout = djinni_env["clipboard_timeout"]
 
-        if (new_cwd.nil? || !new_cwd.has_entry?(target))
+        if (new_cwd.nil? || !new_cwd.has_entry_like?(target))
             puts "Entry not found"
             return
         end
 
+        # Prefer exact match
+        entry = new_cwd.entries[target]
+        # Fallback to case-insensitive match
+        entry ||= new_cwd.entries.select do |k, v|
+            k.downcase == target.downcase
+        end.values.first
+
         case field
         when "pass"
-            new_cwd.entries[target].copy_password_to_clipboard
+            entry.copy_password_to_clipboard
             keepass.send(
                 "clear_clipboard_after_#{timeout}_seconds"
             )
         when "url"
-            new_cwd.entries[target].copy_url_to_clipboard
+            entry.copy_url_to_clipboard
             keepass.send(
                 "clear_clipboard_after_#{timeout}_seconds"
             )
         when "user"
-            new_cwd.entries[target].copy_username_to_clipboard
+            entry.copy_username_to_clipboard
             keepass.send(
                 "clear_clipboard_after_#{timeout}_seconds"
             )

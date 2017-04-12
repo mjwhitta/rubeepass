@@ -51,7 +51,7 @@ class RubeePass::Group
         end
     end
 
-    def find_group(path)
+    def find_group(path, case_insensitive = false)
         return nil if (@keepass.nil?)
 
         path = @keepass.absolute_path(path, @path)
@@ -59,14 +59,28 @@ class RubeePass::Group
 
         path.split("/").each do |group|
             next if (group.empty?)
-            if (cwd.has_group?(group))
-                cwd = cwd.groups[group]
+            if (case_insensitive)
+                if (cwd.has_group_like?(group))
+                    cwd = cwd.groups.select do |k, v|
+                        k.downcase == group.downcase
+                    end.values.first
+                else
+                    return nil
+                end
             else
-                return nil
+                if (cwd.has_group?(group))
+                    cwd = cwd.groups[group]
+                else
+                    return nil
+                end
             end
         end
 
         return cwd
+    end
+
+    def find_group_like(path)
+        return find_group(path, true)
     end
 
     def self.from_xml(keepass, parent, xml)
@@ -122,8 +136,10 @@ class RubeePass::Group
         new_cwd = find_group(path)
         return [Array.new, Array.new] if (new_cwd.nil?)
 
-        if (new_cwd.has_group?(target))
-            new_cwd = new_cwd.groups[target]
+        if (new_cwd.has_group_like?(target))
+            new_cwd = new_cwd.groups.select do |k, v|
+                k.downcase == target.downcase
+            end.values.first
             target = ""
         end
 
@@ -150,15 +166,23 @@ class RubeePass::Group
         end
     end
 
-    def has_entry?(title)
-        return entry_titles.any? do |entry|
-            entry.downcase == title.downcase
+    def has_entry?(entry)
+        return !@entries[entry].nil?
+    end
+
+    def has_entry_like?(entry)
+        return entry_titles.any? do |title|
+            title.downcase == entry.downcase
         end
     end
 
-    def has_group?(name)
-        return group_names.any? do |group|
-            group.downcase == name.downcase
+    def has_group?(group)
+        return !@groups[group].nil?
+    end
+
+    def has_group_like?(group)
+        return group_names.any? do |name|
+            name.downcase == group.downcase
         end
     end
 

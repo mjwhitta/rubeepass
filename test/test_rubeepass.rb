@@ -55,9 +55,13 @@ class RPassTest < Minitest::Test
 
     def test_find_group
         assert_equal(@asdf, @keepass.find_group("asdf"))
+        assert_nil(@keepass.find_group("ASDF"))
+        assert_equal(@asdf, @keepass.find_group_like("ASDF"))
         assert_equal(@internet, @asdf.find_group("Internet"))
         assert_equal(@internet, @keepass.find_group(@internet.path))
         assert_equal(@internet, @bank.find_group("../Internet"))
+        assert_nil(@bank.find_group("../internet"))
+        assert_equal(@internet, @bank.find_group_like("../internet"))
         assert_equal(
             @bank,
             @keepass.find_group("asdf/Internet/../Bank")
@@ -67,12 +71,14 @@ class RPassTest < Minitest::Test
 
     def test_has_entry
         assert(@bank.has_entry?("Chase"))
-        assert(@bank.has_entry?("chase"))
+        assert(!@bank.has_entry?("chase"))
+        assert(@bank.has_entry_like?("chase"))
     end
 
     def test_has_group
         assert(@asdf.has_group?("Internet"))
-        assert(@asdf.has_group?("internet"))
+        assert(!@asdf.has_group?("internet"))
+        assert(@asdf.has_group_like?("internet"))
     end
 
     def test_open_exception

@@ -159,15 +159,11 @@ class RubeePass::Entry
     end
 
     def has_attachment?(name)
-        return @attachments.any? do |k, v|
-            k.downcase == name.downcase
-        end
+        return !@attachments[name].nil?
     end
 
     def has_attribute?(attr)
-        return @attributes.any? do |k, v|
-            k.downcase == attr.downcase
-        end
+        return !@attributes[attr].nil?
     end
 
     def hilight_attr(title)

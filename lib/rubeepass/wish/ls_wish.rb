@@ -15,7 +15,7 @@ class LSWish < Djinni::Wish
 
         args = cwd.path if (args.empty?)
         path = keepass.absolute_path(args, cwd.path)
-        new_cwd = keepass.find_group(path)
+        new_cwd = keepass.find_group_like(path)
 
         if (new_cwd.nil?)
             puts "Group not found"

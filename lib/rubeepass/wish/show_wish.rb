@@ -16,7 +16,7 @@ class ShowWish < Djinni::Wish
         args = cwd.path if (args.empty?)
         path = keepass.absolute_path(args, cwd.path)
         path, found, target = path.rpartition("/")
-        new_cwd = keepass.find_group(path)
+        new_cwd = keepass.find_group_like(path)
 
         if (new_cwd.nil?)
             puts "Group not found"
@@ -30,22 +30,26 @@ class ShowWish < Djinni::Wish
             else
                 puts new_cwd
             end
-        elsif (new_cwd.has_group?(target))
-            case djinni_env["djinni_input"]
-            when "showall"
-                puts new_cwd.groups[target].details(0, true)
-            else
-                puts new_cwd.groups[target]
-            end
-        elsif (new_cwd.has_entry?(target))
-            new_cwd.entry_titles.select do |entry|
-                target.downcase == entry.downcase
-            end.each do |entry|
+        elsif (new_cwd.has_group_like?(target))
+            new_cwd.groups.select do |k, v|
+                k.downcase == target.downcase
+            end.values.each do |group|
                 case djinni_env["djinni_input"]
                 when "showall"
-                    puts new_cwd.entries[entry].details(0, true)
+                    puts group.details(0, true)
                 else
-                    puts new_cwd.entries[entry]
+                    puts group
+                end
+            end
+        elsif (new_cwd.has_entry_like?(target))
+            new_cwd.entries.select do |k, v|
+                k.downcase == target.downcase
+            end.values.each do |entry|
+                case djinni_env["djinni_input"]
+                when "showall"
+                    puts entry.details(0, true)
+                else
+                    puts entry
                 end
             end
         else

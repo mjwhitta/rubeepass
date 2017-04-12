@@ -32,20 +32,27 @@ class EchoWish < Djinni::Wish
 
         path = keepass.absolute_path(path, cwd.path)
         path, found, target = path.rpartition("/")
-        new_cwd = keepass.find_group(path)
+        new_cwd = keepass.find_group_like(path)
 
-        if (new_cwd.nil? || !new_cwd.has_entry?(target))
+        if (new_cwd.nil? || !new_cwd.has_entry_like?(target))
             puts "Entry not found"
             return
         end
 
+        # Prefer exact match
+        entry = new_cwd.entries[target]
+        # Fallback to case-insensitive match
+        entry ||= new_cwd.entries.select do |k, v|
+            k.downcase == target.downcase
+        end.values.first
+
         case field
         when "pass"
-            new_cwd.entries[target].echo_password
+            entry.echo_password
         when "url"
-            new_cwd.entries[target].echo_url
+            entry.echo_url
         when "user"
-            new_cwd.entries[target].echo_username
+            entry.echo_username
         end
     end
 
