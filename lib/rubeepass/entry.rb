@@ -24,7 +24,7 @@ class RubeePass::Entry
 
     def additional_attributes
         return attributes.select do |key, value|
-            key.match(/^(notes|password|title|url|username)$/i).nil?
+            key.match(/^(Notes|Password|Title|URL|UserName)$/).nil?
         end
     end
 
