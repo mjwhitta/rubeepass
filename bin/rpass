@@ -33,7 +33,9 @@ class RubeePassConfig < JSONConfig
     end
 
     def last_keyfile(kf = nil)
-        set("last_keyfile", Pathname.new(kf).expand_path) if (kf)
+        file = nil
+        file = Pathname.new(kf).expand_path if (kf && !kf.empty?)
+        set("last_keyfile", file) if (kf)
         kf = get("last_keyfile").to_s
         return nil if (kf.nil? || kf.empty?)
         return kf
@@ -175,6 +177,7 @@ def parse(args)
     if (args.length == 1)
         # Use specified kdbx (and keyfile if specified)
         options["kdbx"] = args[0]
+        options["keyfile"] ||= ""
     else
         # Use kdbx from config if stored
         if (rc.last_kdbx)
@@ -202,9 +205,9 @@ def parse(args)
     end
 
     # Store data in config
-    rc.last_kdbx(options["kdbx"])
-    rc.last_keyfile(options["keyfile"])
-    rc.timeout(options["timeout"])
+    options["kdbx"] = rc.last_kdbx(options["kdbx"])
+    options["keyfile"] = rc.last_keyfile(options["keyfile"])
+    options["timeout"] = rc.timeout(options["timeout"])
 
     return options
 end
