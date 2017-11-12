@@ -44,7 +44,7 @@ class RubeePassConfig < JSONConfig
     def timeout(t = nil)
         set("timeout", t) if (t)
         t = get("timeout")
-        case t
+        case t.to_s
         when /[0-9]+/
             return t.to_i
         else
