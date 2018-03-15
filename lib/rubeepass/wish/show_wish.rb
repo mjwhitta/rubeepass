@@ -15,7 +15,7 @@ class ShowWish < Djinni::Wish
 
         args = cwd.path if (args.empty?)
         path = keepass.absolute_path(args, cwd.path)
-        path, found, target = path.rpartition("/")
+        path, _, target = path.rpartition("/")
         new_cwd = keepass.find_group_like(path)
 
         if (new_cwd.nil?)

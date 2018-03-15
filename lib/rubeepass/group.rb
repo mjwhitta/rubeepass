@@ -17,6 +17,9 @@ class RubeePass::Group
     end
 
     def <=>(other)
+        if (self.name.downcase == other.name.downcase)
+            return (self.uuid <=> other.uuid)
+        end
         return (self.name.downcase <=> other.name.downcase)
     end
 
@@ -131,7 +134,7 @@ class RubeePass::Group
 
         search = @path if (search.nil? || search.empty?)
         search = @keepass.absolute_path(search, @path)
-        path, found, target = search.rpartition("/")
+        path, _, target = search.rpartition("/")
 
         new_cwd = find_group(path)
         return [Array.new, Array.new] if (new_cwd.nil?)

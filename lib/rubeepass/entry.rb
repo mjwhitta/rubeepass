@@ -19,6 +19,9 @@ class RubeePass::Entry
     end
 
     def <=>(other)
+        if (self.title.downcase == other.title.downcase)
+            return (self.uuid <=> other.uuid)
+        end
         return (self.title.downcase <=> other.title.downcase)
     end
 

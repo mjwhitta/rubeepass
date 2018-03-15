@@ -31,7 +31,7 @@ class EchoWish < Djinni::Wish
         cwd = djinni_env["cwd"]
 
         path = keepass.absolute_path(path, cwd.path)
-        path, found, target = path.rpartition("/")
+        path, _, target = path.rpartition("/")
         new_cwd = keepass.find_group_like(path)
 
         if (new_cwd.nil? || !new_cwd.has_entry_like?(target))
