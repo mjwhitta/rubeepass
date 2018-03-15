@@ -11,13 +11,13 @@ class RPassTest < Minitest::Test
         @keepass = RubeePass.new(@kdbx, "asdf", @keyfile1).open
 
         @db = @keepass.db
-        @asdf = @db.groups["asdf"]
-        @bank = @asdf.groups["Bank"]
-        @internet = @asdf.groups["Internet"]
+        @asdf = @db.groups_by_name("asdf")[0]
+        @bank = @asdf.groups_by_name("Bank")[0]
+        @internet = @asdf.groups_by_name("Internet")[0]
 
-        @chase = @bank.entries["Chase"]
-        @facebook = @internet.entries["Facebook"]
-        @google = @internet.entries["Google"]
+        @chase = @bank.entries_by_title("Chase")[0]
+        @facebook = @internet.entries_by_title("Facebook")[0]
+        @google = @internet.entries_by_title("Google")[0]
     end
 
     def test_absolute_path

@@ -40,11 +40,10 @@ class EchoWish < Djinni::Wish
         end
 
         # Prefer exact match
-        entry = new_cwd.entries[target]
+        entry = new_cwd.entries_by_title(target)[0]
+
         # Fallback to case-insensitive match
-        entry ||= new_cwd.entries.select do |k, v|
-            k.downcase == target.downcase
-        end.values.first
+        entry ||= new_cwd.entries_by_title(target, true)[0]
 
         case field
         when "pass"

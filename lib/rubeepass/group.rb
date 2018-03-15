@@ -48,9 +48,25 @@ class RubeePass::Group
         return out.join("\n")
     end
 
+    def entry_by_uuid(uuid)
+        return @entries[uuid]
+    end
+
     def entry_titles
-        return @entries.keys.sort do |a, b|
+        return @entries.values.map do |entry|
+            entry.title
+        end.sort do |a, b|
             a.downcase <=> b.downcase
+        end
+    end
+
+    def entries_by_title(title, case_insensitive = false)
+        return @entries.values.select do |entry|
+            (entry.title == title) ||
+            (
+                case_insensitive &&
+                (entry.title.downcase == title.downcase)
+            )
         end
     end
 
@@ -62,20 +78,10 @@ class RubeePass::Group
 
         path.split("/").each do |group|
             next if (group.empty?)
-            if (case_insensitive)
-                if (cwd.has_group_like?(group))
-                    cwd = cwd.groups.select do |k, v|
-                        k.downcase == group.downcase
-                    end.values.first
-                else
-                    return nil
-                end
+            if (cwd.has_group_like?(group))
+                cwd = cwd.groups_by_name(group, case_insensitive)[0]
             else
-                if (cwd.has_group?(group))
-                    cwd = cwd.groups[group]
-                else
-                    return nil
-                end
+                return nil
             end
         end
 
@@ -111,7 +117,7 @@ class RubeePass::Group
                     group,
                     entry_xml
                 )
-                group.entries[entry.title] = entry
+                group.entries[entry.uuid] = entry
             end
         end
 
@@ -122,7 +128,7 @@ class RubeePass::Group
                     group,
                     group_xml
                 )
-                group.groups[child.name] = child
+                group.groups[child.uuid] = child
             end
         end
 
@@ -140,9 +146,7 @@ class RubeePass::Group
         return [Array.new, Array.new] if (new_cwd.nil?)
 
         if (new_cwd.has_group_like?(target))
-            new_cwd = new_cwd.groups.select do |k, v|
-                k.downcase == target.downcase
-            end.values.first
+            new_cwd = new_cwd.groups_by_name(target, true)[0]
             target = ""
         end
 
@@ -163,30 +167,42 @@ class RubeePass::Group
         return [group_completions, entry_completions]
     end
 
+    def group_by_uuid(uuid)
+        return @groups[uuid]
+    end
+
     def group_names
-        return @groups.keys.sort do |a, b|
+        return @groups.values.map do |group|
+            group.name
+        end.sort do |a, b|
             a.downcase <=> b.downcase
         end
     end
 
+    def groups_by_name(name, case_insensitive = false)
+        return @groups.values.select do |group|
+            (group.name == name) ||
+            (
+                case_insensitive &&
+                (group.name.downcase == name.downcase)
+            )
+        end
+    end
+
     def has_entry?(entry)
-        return !@entries[entry].nil?
+        return !entries_by_title(entry).empty?
     end
 
     def has_entry_like?(entry)
-        return entry_titles.any? do |title|
-            title.downcase == entry.downcase
-        end
+        return !entries_by_title(entry, true).empty?
     end
 
     def has_group?(group)
-        return !@groups[group].nil?
+        return !groups_by_name(group).empty?
     end
 
     def has_group_like?(group)
-        return group_names.any? do |name|
-            name.downcase == group.downcase
-        end
+        return !groups_by_name(group, true).empty?
     end
 
     def hilight_header(header)

@@ -31,9 +31,7 @@ class ShowWish < Djinni::Wish
                 puts new_cwd
             end
         elsif (new_cwd.has_group_like?(target))
-            new_cwd.groups.select do |k, v|
-                k.downcase == target.downcase
-            end.values.each do |group|
+            new_cwd.groups_by_name(target, true).each do |group|
                 case djinni_env["djinni_input"]
                 when "showall"
                     puts group.details(0, true)
@@ -42,9 +40,7 @@ class ShowWish < Djinni::Wish
                 end
             end
         elsif (new_cwd.has_entry_like?(target))
-            new_cwd.entries.select do |k, v|
-                k.downcase == target.downcase
-            end.values.each do |entry|
+            new_cwd.entries_by_title(target, true).each do |entry|
                 case djinni_env["djinni_input"]
                 when "showall"
                     puts entry.details(0, true)
