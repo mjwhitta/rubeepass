@@ -70,10 +70,20 @@ def parse(args)
     options["timeout"] = nil
     options["verbose"] = false
 
+    info = "KeePass 2.x read-only client."
+
     parser = OptionParser.new do |opts|
-        opts.summary_width = 24
+        opts.summary_width = 26
 
         opts.banner = "Usage: #{File.basename($0)} [OPTIONS] [kdbx]"
+
+        opts.on("")
+
+        info.scan(/\S.{0,80}\S(?=\s|$)|\S+/).each do |line|
+            opts.on("#{line}")
+        end
+
+        opts.on("", "OPTIONS")
 
         opts.on(
             "-c",
@@ -120,7 +130,7 @@ def parse(args)
         opts.on(
             "-p",
             "--password=PASSWORD",
-            "Use specified password (will prompt if not provided)"
+            "Use specified password or read password from file"
         ) do |password|
             options["password"] = password
         end
@@ -216,9 +226,12 @@ options = parse(ARGV)
 
 begin
     kdbx = options["kdbx"]
-    password = options["password"] if (options["password"])
-    password = get_password if (options["password"].nil?)
+    password = options["password"] || get_password
     keyfile = options["keyfile"]
+
+    # Read password from file if filename was provided
+    pfile = Pathname.new(password).expand_path
+    password = pfile.read.chomp if (pfile.exist?)
 
     keepass = RubeePass.new(
         kdbx,
