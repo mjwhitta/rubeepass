@@ -105,7 +105,8 @@ def parse(args)
             "-f",
             "--format=FORMAT",
             [ "gzip", "xml" ],
-            "Specify format to use when exporting (default: xml)"
+            "Specify format to use when exporting (default:",
+            "xml)"
         ) do |format|
             options["export_format"] = format
         end
