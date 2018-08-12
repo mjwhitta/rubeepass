@@ -58,6 +58,11 @@ showall    Show group/entry contents (showall includes passwords)
 
 ## TODO
 
+- Add support for all encryption settings from KeePassXC
+    - ChaCha20
+    - Twofish
+    - Argon2 (KDBX 4 - recommended)
+    - AES-KDF (KDBX 4)
 - Better README
 - RDoc
 - Write/Modify KeePass 2.x data
