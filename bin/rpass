@@ -77,10 +77,10 @@ def parse(args)
 
         opts.banner = "Usage: #{File.basename($0)} [OPTIONS] [kdbx]"
 
-        opts.on("")
+        opts.on("", "DESCRIPTION")
 
-        info.scan(/\S.{0,80}\S(?=\s|$)|\S+/).each do |line|
-            opts.on("#{line}")
+        info.scan(/\S.{0,66}\S(?=\s|$)|\S+/).each do |line|
+            opts.on("    #{line}")
         end
 
         opts.on("", "OPTIONS")
@@ -146,6 +146,13 @@ def parse(args)
             "Show backtrace when error occurs"
         ) do
             options["verbose"] = true
+        end
+
+        opts.on("-V", "--version", "Show version") do
+            __FILE__.match(/rubeepass-(\d+\.\d+\.\d+)/) do |m|
+                puts m[1]
+            end
+            exit RubeePassExit::GOOD
         end
 
         opts.on(
@@ -295,24 +302,31 @@ rescue SystemExit
     # Quit from djinni
     # Exit gracefully
 rescue Interrupt
-    # ^C
-    # Exit gracefully
+    # Exit gracefully on ^C
 rescue Errno::EPIPE
     # Do nothing. This can happen if piping to another program such as
     # less. Usually if less is closed before we're done with STDOUT.
 rescue RubeePass::Error => e
-    puts e.message
+    $stderr.puts e.message.red
+    if (options["verbose"])
+        e.backtrace.each do |line|
+            $stderr.puts line.yellow
+        end
+    end
     exit RubeePassExit::EXCEPTION
 rescue Exception => e
-    $stderr.puts
-    $stderr.puts "Oops! Looks like an error has occured! If the " \
-        "error persists, file a bug at:"
+    $stderr.puts [
+        "Oops! Looks like an error has occured! If the error",
+        "persists, file a bug at:"
+    ].join(" ").wrap
     $stderr.puts
     $stderr.puts "    https://gitlab.com/mjwhitta/rubeepass/issues"
     $stderr.puts
-    $stderr.puts "Maybe the message below will help. If not, you " \
-        "can use the --verbose flag to get"
-    $stderr.puts "a backtrace."
+    $stderr.puts [
+        "Maybe the message below will help. If not, you can use the",
+        "--verbose flag to get a backtrace."
+    ].join(" ").wrap
+    $stderr.puts
 
     $stderr.puts e.message.white.on_red
     if (options["verbose"])

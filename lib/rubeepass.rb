@@ -10,6 +10,7 @@ require "uri"
 require "zlib"
 
 class RubeePass
+    # Header fields
     @@END_OF_HEADER = 0
     @@COMMENT = 1
     @@CIPHER_ID = 2
@@ -22,9 +23,18 @@ class RubeePass
     @@STREAM_START_BYTES = 9
     @@INNER_RANDOM_STREAM_ID = 10
 
+    # Magic values
     @@MAGIC_SIG1 = 0x9aa2d903
     @@MAGIC_SIG2 = 0xb54bfb67
     @@VERSION = 0x00030000
+
+    # Encryption schemes
+    @@AES_AESKDF3 = "31c1f2e6bf714350be5805216afc5aff"
+    @@AES_AESKDF4_OR_ARGON2 = "000031c1f2e6bf714350be5805216afc"
+    @@CHACHA20_AESKDF3 = "d6038a2b8b6f4cb5a524339a31dbb59a"
+    @@CHACHA20_AESKDF4_OR_ARGON2 = "0000d6038a2b8b6f4cb5a524339a31db"
+    @@TWOFISH_AESKDF3 = "ad68f29f576f4bb9a36ad47af965346c"
+    @@TWOFISH_AESKDF4_OR_ARGON2 = "0000ad68f29f576f4bb9a36ad47af965"
 
     attr_reader :attachment_decoder
     attr_reader :db
@@ -135,23 +145,43 @@ class RubeePass
         end
     end
 
-    def derive_aes_key
+    def derive_aeskdf3_key(header)
+        irsi = "\x02\x00\x00\x00"
+        if (
+            (header[@@MASTER_SEED].length != 32) ||
+            (header[@@TRANSFORM_SEED].length != 32)
+        )
+            raise Error::InvalidHeader.new
+        elsif (header[@@INNER_RANDOM_STREAM_ID] != irsi)
+            raise Error::NotSalsa.new
+        end
+
         cipher = OpenSSL::Cipher::AES.new(256, :ECB)
         cipher.encrypt
         cipher.key = @header[@@TRANSFORM_SEED]
         cipher.padding = 0
 
+        key = @initial_key
         @header[@@TRANSFORM_ROUNDS].times do
-            @key = cipher.update(@key) + cipher.final
+            key = cipher.update(key) + cipher.final
         end
 
-        transform_key = Digest::SHA256::digest(@key)
+        transform_key = Digest::SHA256::digest(key)
         combined_key = @header[@@MASTER_SEED] + transform_key
 
-        @aes_key = Digest::SHA256::digest(combined_key)
-        @aes_iv = @header[@@ENCRYPTION_IV]
+        @cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+        @key = Digest::SHA256::digest(combined_key)
+        @iv = @header[@@ENCRYPTION_IV]
     end
-    private :derive_aes_key
+    private :derive_aeskdf3_key
+
+    def derive_aeskdf4_or_argon2_key(header)
+        # require "pry"
+        # binding.pry
+        # puts "AES with AES-KDF4 or Argon2"
+        raise Error::NotSupported.new # TODO
+    end
+    private :derive_aeskdf4_or_argon2_key
 
     def export(export_file, format)
         start_opening
@@ -251,7 +281,7 @@ class RubeePass
             end
         end
 
-        @key = Digest::SHA256.digest(passhash + filehash)
+        @initial_key = Digest::SHA256.digest(passhash + filehash)
     end
     private :join_key_and_keyfile
 
@@ -336,6 +366,31 @@ class RubeePass
     end
     private :parse_gzip
 
+    def parse_header(header)
+        case header[@@CIPHER_ID].unpack("H*")[0]
+        when @@AES_AESKDF3
+            derive_aeskdf3_key(header)
+        when @@AES_AESKDF4_OR_ARGON2
+            derive_aeskdf4_or_argon2_key(header)
+        when @@CHACHA20_AESKDF3
+            # puts "ChaCha20 with AES-KDF3"
+            raise Error::NotSupported.new # TODO
+        when @@CHACHA20_AESKDF4_OR_ARGON2
+            # puts "ChaCha20 with AES-KDF4 or Argon2"
+            raise Error::NotSupported.new # TODO
+        when @@TWOFISH_AESKDF3
+            # puts "Twofish with AES-KDF3"
+            raise Error::NotSupported.new # TODO
+        when @@TWOFISH_AESKDF4_OR_ARGON2
+            # puts "Twofish with AES-KDF4 or Argon2"
+            raise Error::NotSupported.new # TODO
+        else
+            # puts header[@@CIPHER_ID].unpack("H*")[0]
+            raise Error::NotSupported.new
+        end
+    end
+    private :parse_header
+
     def parse_xml
         doc = REXML::Document.new(@xml)
         if (doc.elements["KeePassFile/Root"].nil?)
@@ -352,10 +407,10 @@ class RubeePass
     private :parse_xml
 
     def read_gzip(file)
-        cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+        cipher = @cipher.clone
         cipher.decrypt
-        cipher.key = @aes_key
-        cipher.iv = @aes_iv
+        cipher.key = @key
+        cipher.iv = @iv
 
         encrypted = file.read
 
@@ -379,7 +434,7 @@ class RubeePass
         header = Hash.new
         loop do
             data = file.read(1)
-            raise Error::InvalidHeader.new if (data.nil?)
+            break if (data.nil?)
             id = data.unpack("C*")[0]
 
             data = file.read(2)
@@ -387,6 +442,9 @@ class RubeePass
             size = data.unpack("S*")[0]
 
             data = file.read(size)
+            if (data.nil? && (size > 0))
+                raise Error::InvalidHeader.new
+            end
 
             case id
             when @@END_OF_HEADER
@@ -396,19 +454,6 @@ class RubeePass
             else
                 header[id] = data
             end
-        end
-
-        irsi = "\x02\x00\x00\x00"
-        aes = "31c1f2e6bf714350be5805216afc5aff"
-        if (
-            (header[@@MASTER_SEED].length != 32) ||
-            (header[@@TRANSFORM_SEED].length != 32)
-        )
-            raise Error::InvalidHeader.new
-        elsif (header[@@INNER_RANDOM_STREAM_ID] != irsi)
-            raise Error::NotSalsa.new
-        elsif (header[@@CIPHER_ID].unpack("H*")[0] != aes)
-            raise Error::NotAES.new
         end
 
         @header = header
@@ -436,20 +481,20 @@ class RubeePass
     private :read_magic_and_version
 
     def start_opening
-        @aes_iv = nil
-        @aes_key = nil
         @db = nil
         @gzip = nil
         @header = nil
+        @initial_key = nil
+        @iv = nil
         @key = nil
         @xml = nil
 
         file = File.open(@kdbx)
 
         read_magic_and_version(file)
-        read_header(file)
+        header = read_header(file)
         join_key_and_keyfile
-        derive_aes_key
+        parse_header(header)
         read_gzip(file)
 
         file.close

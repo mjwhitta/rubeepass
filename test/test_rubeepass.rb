@@ -4,14 +4,23 @@ require "rubeepass"
 
 class RPassTest < Minitest::Test
     def setup
-        @kdbx = Pathname.new("test/asdf.kdbx").expand_path
-        @keyfile1 = Pathname.new("test/asdf.xml").expand_path
-        @keyfile2 = Pathname.new("test/asdf.key1").expand_path
-        @keyfile3 = Pathname.new("test/asdf.key2").expand_path
-        @keepass = RubeePass.new(@kdbx, "asdf", @keyfile1).open
+        @kdbx = [
+            Pathname.new("test/db.aes.aeskdf3.kdbx").expand_path,
+            # Pathname.new("test/db.aes.aeskdf4.kdbx").expand_path,
+            # Pathname.new("test/db.aes.argon2.kdbx").expand_path,
+            # Pathname.new("test/db.chacha20.aeskdf3.kdbx").expand_path,
+            # Pathname.new("test/db.chacha20.aeskdf4.kdbx").expand_path,
+            # Pathname.new("test/db.chacha20.argon2.kdbx").expand_path,
+            # Pathname.new("test/db.twofish.aeskdf3.kdbx").expand_path,
+            # Pathname.new("test/db.twofish.aeskdf4.kdbx").expand_path,
+            # Pathname.new("test/db.twofish.argon2.kdbx").expand_path
+        ]
+        @keyfile1 = Pathname.new("test/db.xml").expand_path
+        @keyfile2 = Pathname.new("test/db.key1").expand_path
+        @keyfile3 = Pathname.new("test/db.key2").expand_path
 
-        @db = @keepass.db
-        @asdf = @db.groups_by_name("asdf")[0]
+        @aes = RubeePass.new(@kdbx[0], "asdf", @keyfile1).open
+        @asdf = @aes.db.groups_by_name("asdf")[0]
         @bank = @asdf.groups_by_name("Bank")[0]
         @internet = @asdf.groups_by_name("Internet")[0]
 
@@ -21,20 +30,20 @@ class RPassTest < Minitest::Test
     end
 
     def test_absolute_path
-        assert_equal(@asdf.path, @keepass.absolute_path("asdf"))
+        assert_equal(@asdf.path, @aes.absolute_path("asdf"))
         assert_equal(
             @internet.path,
-            @keepass.absolute_path("Internet", "asdf")
+            @aes.absolute_path("Internet", "asdf")
         )
         assert_equal(
             @bank.path,
-            @keepass.absolute_path("../Bank", @internet.path)
+            @aes.absolute_path("../Bank", @internet.path)
         )
         assert_equal(
             @bank.path,
-            @keepass.absolute_path(@bank.path, @internet.path)
+            @aes.absolute_path(@bank.path, @internet.path)
         )
-        assert_equal("/asdf/Ban", @keepass.absolute_path("/asdf/Ban"))
+        assert_equal("/asdf/Ban", @aes.absolute_path("/asdf/Ban"))
     end
 
     def test_additional_attributes
@@ -58,19 +67,16 @@ class RPassTest < Minitest::Test
     end
 
     def test_find_group
-        assert_equal(@asdf, @keepass.find_group("asdf"))
-        assert_nil(@keepass.find_group("ASDF"))
-        assert_equal(@asdf, @keepass.find_group_like("ASDF"))
+        assert_equal(@asdf, @aes.find_group("asdf"))
+        assert_nil(@aes.find_group("ASDF"))
+        assert_equal(@asdf, @aes.find_group_like("ASDF"))
         assert_equal(@internet, @asdf.find_group("Internet"))
-        assert_equal(@internet, @keepass.find_group(@internet.path))
+        assert_equal(@internet, @aes.find_group(@internet.path))
         assert_equal(@internet, @bank.find_group("../Internet"))
         assert_nil(@bank.find_group("../internet"))
         assert_equal(@internet, @bank.find_group_like("../internet"))
-        assert_equal(
-            @bank,
-            @keepass.find_group("asdf/Internet/../Bank")
-        )
-        assert_nil(@keepass.find_group("blah"))
+        assert_equal(@bank, @aes.find_group("asdf/Internet/../Bank"))
+        assert_nil(@aes.find_group("blah"))
     end
 
     def test_has_entry
@@ -86,15 +92,19 @@ class RPassTest < Minitest::Test
     end
 
     def test_open_exception
-        assert_raises(RubeePass::Error::InvalidPassword) do
-            RubeePass.new(@kdbx, "password").open
+        @kdbx.each do |kdbx|
+            assert_raises(RubeePass::Error::InvalidPassword) do
+                RubeePass.new(kdbx, "password").open
+            end
         end
     end
 
     def test_open_no_exception
-        RubeePass.new(@kdbx, "asdf", @keyfile1).open
-        RubeePass.new(@kdbx, "asdf", @keyfile2).open
-        RubeePass.new(@kdbx, "asdf", @keyfile3).open
+        @kdbx.each do |kdbx|
+            RubeePass.new(kdbx, "asdf", @keyfile1).open
+            RubeePass.new(kdbx, "asdf", @keyfile2).open
+            RubeePass.new(kdbx, "asdf", @keyfile3).open
+        end
     end
 
     def test_passwords
