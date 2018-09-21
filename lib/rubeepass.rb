@@ -11,34 +11,48 @@ require "zlib"
 
 class RubeePass
     # Header fields
-    @@END_OF_HEADER = 0
-    @@COMMENT = 1
-    @@CIPHER_ID = 2
-    @@COMPRESSION = 3
-    @@MASTER_SEED = 4
-    @@TRANSFORM_SEED = 5
-    @@TRANSFORM_ROUNDS = 6
-    @@ENCRYPTION_IV = 7
-    @@PROTECTED_STREAM_KEY = 8
-    @@STREAM_START_BYTES = 9
-    @@INNER_RANDOM_STREAM_ID = 10
+    module Header
+        END_OF_HEADER = 0
+        COMMENT = 1
+        CIPHER_ID = 2
+        COMPRESSION = 3
+        MASTER_SEED = 4
+        TRANSFORM_SEED = 5
+        TRANSFORM_ROUNDS = 6
+        ENCRYPTION_IV = 7
+        PROTECTED_STREAM_KEY = 8
+        STREAM_START_BYTES = 9
+        INNER_RANDOM_STREAM_ID = 10
+        KDF_PARAMETERS = 11
+        PUBLIC_CUSTOM_DATA = 12
+    end
+
+    # Inner header fields
+    module InnerHeader
+        END_OF_HEADER = 0
+        RANDOM_STREAM_ID = 1
+        RANDOM_STREAM_KEY = 2
+        BINARY = 3
+    end
 
     # Magic values
-    @@MAGIC_SIG1 = 0x9aa2d903
-    @@MAGIC_SIG2 = 0xb54bfb67
-    @@VERSION = 0x00030000
+    module Magic
+        SIG1 = 0x9aa2d903
+        SIG2 = 0xb54bfb67
+        VERSION3 = 0x00030000
+        VERSION31 = 0x00030001
+        VERSION4 = 0x00040000
+    end
 
-    # Encryption schemes
-    @@AES_AESKDF3 = "31c1f2e6bf714350be5805216afc5aff"
-    @@AES_AESKDF4_OR_ARGON2 = "000031c1f2e6bf714350be5805216afc"
-    @@CHACHA20_AESKDF3 = "d6038a2b8b6f4cb5a524339a31dbb59a"
-    @@CHACHA20_AESKDF4_OR_ARGON2 = "0000d6038a2b8b6f4cb5a524339a31db"
-    @@TWOFISH_AESKDF3 = "ad68f29f576f4bb9a36ad47af965346c"
-    @@TWOFISH_AESKDF4_OR_ARGON2 = "0000ad68f29f576f4bb9a36ad47af965"
+    # Stream algorithm
+    module StreamAlgorithm
+        ARC_FOUR_VARIANT = 1
+        SALSA20 = 2
+        CHACHA20 = 3
+    end
 
     attr_reader :attachment_decoder
     attr_reader :db
-    attr_reader :gzip
     attr_reader :protected_decryptor
     attr_reader :xml
 
@@ -145,43 +159,136 @@ class RubeePass
         end
     end
 
-    def derive_aeskdf3_key(header)
+    def decompress(compressed)
+        if (!@header[Header::COMPRESSION])
+            # This feels like a hack
+            m = compressed.read.match(
+                /\<KeePassFile\>.+\<\/KeePassFile\>/m
+            )
+            return m[0] if (m.length > 0)
+            return nil
+        end
+
+        gzip = ""
+        block_id = 0
+
+        loop do
+            # Read block ID
+            data = compressed.read(4)
+            raise Error::InvalidGzip.new if (data.nil?)
+            id = data.unpack("L*")[0]
+            raise Error::InvalidGzip.new if (block_id != id)
+
+            block_id += 1
+
+            # Read expected hash
+            data = compressed.read(32)
+            raise Error::InvalidGzip.new if (data.nil?)
+            expected_hash = data
+
+            # Read size
+            data = compressed.read(4)
+            raise Error::InvalidGzip.new if (data.nil?)
+            size = data.unpack("L*")[0]
+
+            # Break if size is 0 and expected hash is all 0's
+            if (size == 0)
+                expected_hash.each_byte do |byte|
+                    raise Error::InvalidGzip.new if (byte != 0)
+                end
+                break
+            end
+
+            # Read data and get actual hash
+            data = compressed.read(size)
+            actual_hash = Digest::SHA256.digest(data)
+
+            # Check that actual hash is same as expected hash
+            if (actual_hash != expected_hash)
+                raise Error::InvalidGzip.new
+            end
+
+            # Append data
+            gzip += data
+        end
+
+        # Unzip gzip data
+        return Zlib::GzipReader.new(StringIO.new(gzip)).read
+    end
+    private :decompress
+
+    def derive_kdf3_key
+        case @version
+        when Magic::VERSION4
+            raise Error::InvalidHeader.new("KDF3 with version 4")
+        end
+
         irsi = "\x02\x00\x00\x00"
         if (
-            (header[@@MASTER_SEED].length != 32) ||
-            (header[@@TRANSFORM_SEED].length != 32)
+            (@header[Header::MASTER_SEED].length != 32) ||
+            (@header[Header::TRANSFORM_SEED].length != 32)
         )
-            raise Error::InvalidHeader.new
-        elsif (header[@@INNER_RANDOM_STREAM_ID] != irsi)
+            raise Error::InvalidHeader.new("Invalid seed size")
+        elsif (@header[Header::INNER_RANDOM_STREAM_ID] != irsi)
             raise Error::NotSalsa.new
         end
 
         cipher = OpenSSL::Cipher::AES.new(256, :ECB)
         cipher.encrypt
-        cipher.key = @header[@@TRANSFORM_SEED]
+        cipher.key = @header[Header::TRANSFORM_SEED]
         cipher.padding = 0
 
         key = @initial_key
-        @header[@@TRANSFORM_ROUNDS].times do
+        @header[Header::TRANSFORM_ROUNDS].times do
             key = cipher.update(key) + cipher.final
         end
 
         transform_key = Digest::SHA256::digest(key)
-        combined_key = @header[@@MASTER_SEED] + transform_key
+        combined_key = @header[Header::MASTER_SEED] + transform_key
 
-        @cipher = OpenSSL::Cipher::AES.new(256, :CBC)
-        @key = Digest::SHA256::digest(combined_key)
-        @iv = @header[@@ENCRYPTION_IV]
+        @cipher = Cipher.new(
+            @header[Header::CIPHER_ID],
+            @header[Header::ENCRYPTION_IV],
+            Digest::SHA256::digest(combined_key)
+        )
     end
-    private :derive_aeskdf3_key
+    private :derive_kdf3_key
 
-    def derive_aeskdf4_or_argon2_key(header)
-        # require "pry"
-        # binding.pry
-        # puts "AES with AES-KDF4 or Argon2"
-        raise Error::NotSupported.new # TODO
+    def derive_kdf4_key(file)
+        case @version
+        when Magic::VERSION3, Magic::VERSION31
+            raise Error::InvalidHeader.new("KDF4 with version 3")
+        end
+
+        sha = file.read(32)
+        hmac = file.read(32)
+
+        if (sha.nil? || (sha.length != 32))
+            raise Error::InvalidHeader.new("Invalid SHA size")
+        end
+        if (hmac.nil? || (hmac.length != 32))
+            raise Error::InvalidHeader.new("Invalid HMAC size")
+        end
+
+        # TODO check SHA and HMAC (eh, later)
+
+        # TODO implement kdf4 key derivation
+
+        raise Error::NotSupported.new("AES with new KDF")
     end
-    private :derive_aeskdf4_or_argon2_key
+    private :derive_kdf4_key
+
+    def derive_key(file)
+        if (
+            @header[Header::TRANSFORM_ROUNDS].nil? ||
+            @header[Header::TRANSFORM_SEED].nil?
+        )
+            derive_kdf4_key(file)
+        else
+            derive_kdf3_key
+        end
+    end
+    private :derive_key
 
     def export(export_file, format)
         start_opening
@@ -189,17 +296,14 @@ class RubeePass
         File.open(export_file, "w") do |f|
             case format
             when "gzip"
-                f.write(@gzip)
+                gz = Zlib::GzipWriter.new(f)
+                gz.write(@xml)
+                gz.close
             when "xml"
                 f.write(@xml)
             end
         end
     end
-
-    def extract_xml
-        @xml = Zlib::GzipReader.new(StringIO.new(@gzip)).read
-    end
-    private :extract_xml
 
     def find_group(path)
         return @db.find_group(path)
@@ -221,7 +325,7 @@ class RubeePass
         @password = password
 
         if (@kdbx.nil?)
-            # TODO
+            raise RubeePass::Error::FileNotFound.new("null")
         elsif (!@kdbx.exist?)
             raise RubeePass::Error::FileNotFound.new(@kdbx)
         elsif (!@kdbx.readable?)
@@ -247,26 +351,11 @@ class RubeePass
                 contents = contents.unpack("H*").pack("H*")
             end
             if (contents[0..4] == "<?xml")
-                # XML Key file
-                # My ugly attempt to parse a small XML Key file with a
-                # poor attempt at schema validation
-                keyfile_line = false
-                key_line = false
-                contents.each_line do |line|
-                    line.strip!
-                    case line
-                    when "<KeyFile>"
-                        keyfile_line = true
-                    when "<Key>"
-                        key_line = true
-                    when %r{<Data>.*</Data>}
-                        data = line.gsub(%r{^<Data>|</Data>$}, "")
-                        data = data.unpack("m*")[0]
-                        break if (!keyfile_line || !key_line)
-                        break if (data.length != 32)
-                        filehash = data
-                    end
-                end
+                # Parse XML for data
+                doc = REXML::Document.new(contents)
+                data = doc.elements["KeyFile/Key/Data"]
+                raise Error::InvalidXML.new if (data.nil?)
+                filehash = data.text.unpack("m*")[0]
             elsif (contents.length == 32)
                 # Not XML but a 32 byte Key file
                 filehash = contents
@@ -308,7 +397,7 @@ class RubeePass
 
         @protected_decryptor = ProtectedDecryptor.new(
             Digest::SHA256.digest(
-                @header[@@PROTECTED_STREAM_KEY]
+                @header[Header::PROTECTED_STREAM_KEY]
             ),
             ["E830094B97205D2A"].pack("H*")
         )
@@ -317,79 +406,6 @@ class RubeePass
 
         return self
     end
-
-    def parse_gzip(file)
-        gzip = ""
-        block_id = 0
-
-        loop do
-            # Read block ID
-            data = file.read(4)
-            raise Error::InvalidGzip.new if (data.nil?)
-            id = data.unpack("L*")[0]
-            raise Error::InvalidGzip.new if (block_id != id)
-
-            block_id += 1
-
-            # Read expected hash
-            data = file.read(32)
-            raise Error::InvalidGzip.new if (data.nil?)
-            expected_hash = data
-
-            # Read size
-            data = file.read(4)
-            raise Error::InvalidGzip.new if (data.nil?)
-            size = data.unpack("L*")[0]
-
-            # Break is size is 0 and expected hash is all 0's
-            if (size == 0)
-                expected_hash.each_byte do |byte|
-                    raise Error::InvalidGzip.new if (byte != 0)
-                end
-                break
-            end
-
-            # Read data and get actual hash
-            data = file.read(size)
-            actual_hash = Digest::SHA256.digest(data)
-
-            # Check that actual hash is same as expected hash
-            if (actual_hash != expected_hash)
-                raise Error::InvalidGzip.new
-            end
-
-            # Append data
-            gzip += data
-        end
-
-        return gzip
-    end
-    private :parse_gzip
-
-    def parse_header(header)
-        case header[@@CIPHER_ID].unpack("H*")[0]
-        when @@AES_AESKDF3
-            derive_aeskdf3_key(header)
-        when @@AES_AESKDF4_OR_ARGON2
-            derive_aeskdf4_or_argon2_key(header)
-        when @@CHACHA20_AESKDF3
-            # puts "ChaCha20 with AES-KDF3"
-            raise Error::NotSupported.new # TODO
-        when @@CHACHA20_AESKDF4_OR_ARGON2
-            # puts "ChaCha20 with AES-KDF4 or Argon2"
-            raise Error::NotSupported.new # TODO
-        when @@TWOFISH_AESKDF3
-            # puts "Twofish with AES-KDF3"
-            raise Error::NotSupported.new # TODO
-        when @@TWOFISH_AESKDF4_OR_ARGON2
-            # puts "Twofish with AES-KDF4 or Argon2"
-            raise Error::NotSupported.new # TODO
-        else
-            # puts header[@@CIPHER_ID].unpack("H*")[0]
-            raise Error::NotSupported.new
-        end
-    end
-    private :parse_header
 
     def parse_xml
         doc = REXML::Document.new(@xml)
@@ -406,30 +422,6 @@ class RubeePass
     end
     private :parse_xml
 
-    def read_gzip(file)
-        cipher = @cipher.clone
-        cipher.decrypt
-        cipher.key = @key
-        cipher.iv = @iv
-
-        encrypted = file.read
-
-        begin
-            data = StringIO.new(
-                cipher.update(encrypted) + cipher.final
-            )
-        rescue OpenSSL::Cipher::CipherError
-            raise Error::InvalidPassword.new
-        end
-
-        if (data.read(32) != @header[@@STREAM_START_BYTES])
-            raise Error::InvalidPassword.new
-        end
-
-        @gzip = parse_gzip(data)
-    end
-    private :read_gzip
-
     def read_header(file)
         header = Hash.new
         loop do
@@ -437,7 +429,14 @@ class RubeePass
             break if (data.nil?)
             id = data.unpack("C*")[0]
 
-            data = file.read(2)
+            case @version
+            when Magic::VERSION3, Magic::VERSION31
+                data = file.read(2)
+            when Magic::VERSION4
+                data = file.read(4)
+            else
+                raise Error::InvalidHeader.new
+            end
             raise Error::InvalidHeader.new if (data.nil?)
             size = data.unpack("S*")[0]
 
@@ -447,11 +446,40 @@ class RubeePass
             end
 
             case id
-            when @@END_OF_HEADER
+            when Header::CIPHER_ID
+                header[id] = data.unpack("H*")[0]
+            when Header::COMPRESSION
+                header[id] = (data.unpack("L*")[0] > 0)
+            when Header::END_OF_HEADER
                 break
-            when @@TRANSFORM_ROUNDS
+            when Header::KDF_PARAMETERS
+                case @version
+                when Magic::VERSION3, Magic::VERSION31
+                    raise Error::InvalidHeader.new
+                end
+                # raise Error::NotSupported.new("Custom KDF params")
+            when Header::PUBLIC_CUSTOM_DATA
+                case @version
+                when Magic::VERSION3, Magic::VERSION31
+                    raise Error::InvalidHeader.new
+                end
+                raise Error::NotSupported.new("Public custom data")
+            when Header::TRANSFORM_ROUNDS
                 header[id] = data.unpack("Q*")[0]
             else
+                case @version
+                when Magic::VERSION4
+                    case id
+                    when Header::INNER_RANDOM_STREAM_ID,
+                         Header::PROTECTED_STREAM_KEY,
+                         Header::STREAM_START_BYTES,
+                         Header::TRANSFORM_ROUNDS,
+                         Header::TRANSFORM_SEED
+                        raise Error::InvalidHeader.new(
+                            "Legacy header ID"
+                        )
+                    end
+                end
                 header[id] = data
             end
         end
@@ -463,43 +491,54 @@ class RubeePass
     def read_magic_and_version(file)
         data = file.read(4)
         raise Error::InvalidMagic.new if (data.nil?)
-        sig1 = data.unpack("L*")[0]
-        raise Error::InvalidMagic.new if (sig1 != @@MAGIC_SIG1)
+        @sig1 = data.unpack("L*")[0]
+        # raise Error::InvalidMagic.new if (@sig1 != Magic::SIG1)
 
         data = file.read(4)
         raise Error::InvalidMagic.new if (data.nil?)
-        sig2 = data.unpack("L*")[0]
-        raise Error::InvalidMagic.new if (sig2 != @@MAGIC_SIG2)
+        @sig2 = data.unpack("L*")[0]
+        # raise Error::InvalidMagic.new if (@sig2 != Magic::SIG2)
 
         data = file.read(4)
         raise Error::InvalidVersion.new if (data.nil?)
-        ver = data.unpack("L*")[0]
-        if ((ver & 0xffff0000) != @@VERSION)
-            raise Error::InvalidVersion.new if (data.nil?)
+        @version = data.unpack("L*")[0]
+        case @version
+        when Magic::VERSION3, Magic::VERSION31, Magic::VERSION4
+        else
+            raise Error::InvalidVersion.new
         end
     end
     private :read_magic_and_version
 
     def start_opening
+        @cipher = nil
         @db = nil
-        @gzip = nil
         @header = nil
         @initial_key = nil
-        @iv = nil
-        @key = nil
+        @sig1 = nil
+        @sig2 = nil
+        @version = nil
         @xml = nil
 
         file = File.open(@kdbx)
 
+        # Read metadata and derive key
         read_magic_and_version(file)
-        header = read_header(file)
+        read_header(file)
         join_key_and_keyfile
-        parse_header(header)
-        read_gzip(file)
+        derive_key(file)
+
+        # Decrypt file
+        encrypted = file.read
+        decrypted = @cipher.decrypt(encrypted)
+        if (decrypted.read(32) != @header[Header::STREAM_START_BYTES])
+            raise Error::InvalidPassword.new
+        end
+
+        # Decompress (if necessary)
+        @xml = decompress(decrypted)
 
         file.close
-
-        extract_xml
     end
     private :start_opening
 
@@ -518,6 +557,7 @@ class RubeePass
 end
 
 require "rubeepass/attachment_decoder"
+require "rubeepass/cipher"
 require "rubeepass/entry"
 require "rubeepass/error"
 require "rubeepass/group"

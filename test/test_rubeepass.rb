@@ -4,16 +4,18 @@ require "rubeepass"
 
 class RPassTest < Minitest::Test
     def setup
+        k="test/kdbx/kdf"
         @kdbx = [
-            Pathname.new("test/kdbx/aes.aeskdf3.kdbx").expand_path,
-            # Pathname.new("test/kdbx/aes.aeskdf4.kdbx").expand_path,
-            # Pathname.new("test/kdbx/aes.argon2.kdbx").expand_path,
-            # Pathname.new("test/kdbx/chacha20.aeskdf3.kdbx").expand_path,
-            # Pathname.new("test/kdbx/chacha20.aeskdf4.kdbx").expand_path,
-            # Pathname.new("test/kdbx/chacha20.argon2.kdbx").expand_path,
-            # Pathname.new("test/kdbx/twofish.aeskdf3.kdbx").expand_path,
-            # Pathname.new("test/kdbx/twofish.aeskdf4.kdbx").expand_path,
-            # Pathname.new("test/kdbx/twofish.argon2.kdbx").expand_path
+            Pathname.new("#{k}3_aes_aes.kdbx").expand_path,
+            Pathname.new("#{k}3_aes_aes.gz.kdbx").expand_path,
+            Pathname.new("#{k}3_chacha20_aes.gz.kdbx").expand_path,
+            Pathname.new("#{k}3_twofish_aes.gz.kdbx").expand_path,
+            # Pathname.new("#{k}4_aes_aes.gz.kdbx").expand_path,
+            # Pathname.new("#{k}4_aes_argon2.gz.kdbx").expand_path,
+            # Pathname.new("#{k}4_chacha20_aes.gz.kdbx").expand_path,
+            # Pathname.new("#{k}4_chacha20_argon2.gz.kdbx").expand_path,
+            # Pathname.new("#{k}4_twofish_aes.gz.kdbx").expand_path,
+            # Pathname.new("#{k}4_twofish_argon2.gz.kdbx").expand_path
         ]
         @keyfile1 = Pathname.new("test/key/bin.key").expand_path
         @keyfile2 = Pathname.new("test/key/hex.key").expand_path

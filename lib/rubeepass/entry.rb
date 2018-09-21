@@ -154,9 +154,11 @@ class RubeePass::Entry
                 data = data.unpack("H*").pack("H*")
             end
         rescue ArgumentError
-            raise Error::InvalidProtectedData.new
+            raise RubeePass::Error::InvalidProtectedData.new
         end
-        raise Error::InvalidProtectedData.new if (data.nil?)
+        if (data.nil?)
+            raise RubeePass::Error::InvalidProtectedData.new
+        end
 
         return keepass.protected_decryptor.add_to_stream(data)
     end

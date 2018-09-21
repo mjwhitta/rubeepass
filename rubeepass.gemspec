@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
     s.name = "rubeepass"
-    s.version = "3.2.0"
+    s.version = "3.3.0"
     s.date = Time.new.strftime("%Y-%m-%d")
     s.summary = "Ruby KeePass 2.x read-only client"
     s.description =
@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
     s.add_runtime_dependency("hilighter", "~> 1.1", ">= 1.2.3")
     s.add_runtime_dependency("json_config", "~> 0.1", ">= 0.1.4")
     s.add_runtime_dependency("os", "~> 1.0", ">= 1.0.0")
-    s.add_runtime_dependency("salsa20", "~> 0.1", ">= 0.1.2")
+    s.add_runtime_dependency("salsa20", "~> 0.1", ">= 0.1.3")
     s.add_runtime_dependency("scoobydoo", "~> 0.1", ">= 0.1.6")
+    s.add_runtime_dependency("twofish", "~> 1.0", ">= 1.0.8")
 end
