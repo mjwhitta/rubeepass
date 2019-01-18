@@ -422,6 +422,20 @@ class RubeePass
     end
     private :parse_xml
 
+    def pwnedpasswords(group = @db)
+        return [] if (group.nil?)
+
+        pwned = Array.new
+        group.groups.each do |name, subgroup|
+            pwned.concat(pwnedpasswords(subgroup))
+        end
+        group.entries.each do |name, entry|
+            pwned.push(entry) if (entry.is_pwned?)
+        end
+
+        return pwned
+    end
+
     def read_header(file)
         header = Hash.new
         loop do

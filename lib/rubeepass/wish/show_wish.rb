@@ -6,7 +6,9 @@ class ShowWish < Djinni::Wish
     end
 
     def description
-        "Show group/entry contents (showall includes passwords)"
+        return [
+            "Show group/entry contents (showall includes passwords)"
+        ].join(" ")
     end
 
     def execute(args, djinni_env = Hash.new)

@@ -10,7 +10,12 @@ end
 
 desc "Test example project"
 task :ex => :install do
-    system("bin/rpass -p asdf -k test/asdf.xml test/asdf.kdbx")
+    system(
+        [
+            "bin/rpass -p asdf -k test/key/key.xml",
+            "test/kdbx/kdf3_aes_aes.kdbx"
+        ].join(" ")
+    )
 end
 
 desc "Build gem"

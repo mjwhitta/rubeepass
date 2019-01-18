@@ -114,4 +114,9 @@ class RPassTest < Minitest::Test
         assert_equal("facebook_password", @facebook.password)
         assert_equal("google_password", @google.password)
     end
+
+    def test_pwned
+        assert_equal(1, @aes.pwnedpasswords.length)
+        assert_equal(@facebook, @aes.pwnedpasswords[0])
+    end
 end

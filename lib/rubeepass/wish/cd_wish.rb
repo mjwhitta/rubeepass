@@ -34,7 +34,7 @@ class CDWish < Djinni::Wish
 
     def tab_complete(input, djinni_env = Hash.new)
         cwd = djinni_env["cwd"]
-        groups, entries = cwd.fuzzy_find(input)
+        groups, _ = cwd.fuzzy_find(input)
 
         completions = Hash.new
         groups.each do |group|

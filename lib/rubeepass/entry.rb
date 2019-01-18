@@ -1,5 +1,8 @@
+require "digest"
 require "hilighter"
+require "net/http"
 require "rexml/document"
+require "uri"
 
 class RubeePass::Entry
     include Comparable
@@ -212,6 +215,17 @@ class RubeePass::Entry
         @path = @title
         @path = "#{@group.path}/#{@title}" if (@group)
         @path.gsub!(%r{^//}, "/")
+    end
+
+    def is_pwned?
+        sha = Digest::SHA1.hexdigest(@password).upcase
+        url = URI("https://api.pwnedpasswords.com/range/#{sha[0..4]}")
+        http = Net::HTTP.new(url.host, url.port)
+        http.use_ssl = true
+        res = http.request(Net::HTTP::Get.new(url))
+
+        return true if (res.body.match(/#{sha[5..]}/))
+        return false
     end
 
     def method_missing(method_name, *args)
