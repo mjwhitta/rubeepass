@@ -19,37 +19,20 @@ class RubeePassExit
 end
 
 class RubeePassConfig < JSONConfig
-    def default_config
-        set("last_kdbx", nil)
-        set("last_keyfile", nil)
-        set("timeout", 10)
-    end
+    extend JSONConfig::Keys
 
-    def last_kdbx(kdbx = nil)
-        set("last_kdbx", Pathname.new(kdbx).expand_path) if (kdbx)
-        kdbx = get("last_kdbx").to_s
-        return nil if (kdbx.nil? || kdbx.empty?)
-        return kdbx
-    end
+    add_key("kdbx")
+    add_key("keyfile")
+    add_key("timeout")
 
-    def last_keyfile(kf = nil)
-        file = nil
-        file = Pathname.new(kf).expand_path if (kf && !kf.empty?)
-        set("last_keyfile", file) if (kf)
-        kf = get("last_keyfile").to_s
-        return nil if (kf.nil? || kf.empty?)
-        return kf
-    end
-
-    def timeout(t = nil)
-        set("timeout", t) if (t)
-        t = get("timeout")
-        case t.to_s
-        when /[0-9]+/
-            return t.to_i
-        else
-            return nil
-        end
+    def initialize(file = nil)
+        file ||= "~/.config/rubeepass/rc"
+        @defaults = {
+            "kdbx" => nil,
+            "keyfile" => nil,
+            "timeout" => 10
+        }
+        super(file)
     end
 end
 
@@ -63,11 +46,10 @@ end
 def parse(args)
     options = Hash.new
     options["command"] = nil
+    options["config"] = RubeePassConfig.new
     options["export_file"] = nil
     options["export_format"] = "xml"
     options["password"] = nil
-    options["keyfile"] = nil
-    options["timeout"] = nil
     options["verbose"] = false
 
     info = "KeePass 2.x read-only client."
@@ -121,7 +103,8 @@ def parse(args)
             "--keyfile=KEYFILE",
             "Use specified keyfile"
         ) do |keyfile|
-            options["keyfile"] = keyfile
+            k = Pathname.new(keyfile).expand_path
+            options["config"].set_keyfile(k)
         end
 
         opts.on("--nocolor", "Disable colorized output") do
@@ -136,8 +119,13 @@ def parse(args)
             options["password"] = password
         end
 
-        opts.on("-t", "--timeout=TIMEOUT", "Clipboard timeout") do |t|
-            options["timeout"] = t.to_i
+        opts.on(
+            "-t",
+            "--timeout=TIMEOUT",
+            Integer,
+            "Clipboard timeout"
+        ) do |t|
+            options["config"].set_timeout(t)
         end
 
         opts.on(
@@ -183,49 +171,22 @@ def parse(args)
         exit RubeePassExit::AMBIGUOUS_ARGUMENT
     end
 
-    if (args.length > 1)
+    if (args.length == 1)
+        k = Pathname.new(args[0]).expand_path
+        options["config"].set_kdbx(k)
+
+        # Save keyfile even if not specified
+        options["config"].savediff
+    elsif (args.length > 1)
         puts parser
         exit RubeePassExit::EXTRA_ARGUMENTS
     end
 
-    # Read config
-    rc = RubeePassConfig.new("~/.rpassrc")
-
-    # Determine kdbx and keyfile
-    if (args.length == 1)
-        # Use specified kdbx (and keyfile if specified)
-        options["kdbx"] = args[0]
-        options["keyfile"] ||= ""
-    else
-        # Use kdbx from config if stored
-        if (rc.last_kdbx)
-            options["kdbx"] = rc.last_kdbx
-        end
-
-        # Use keyfile from config if stored and not specified already
-        if (options["keyfile"].nil?)
-            if (rc.last_keyfile)
-                options["keyfile"] = rc.last_keyfile
-            end
-        end
-    end
-
-    # Determine timeout
-    if (options["timeout"].nil?)
-        options["timeout"] = 10
-        options["timeout"] = rc.timeout if (rc.timeout)
-    end
-
     # Throw error if kdbx not specified or in config
-    if (options["kdbx"].nil?)
+    if (!options["config"].kdbx?)
         puts parser
         exit RubeePassExit::MISSING_ARGUMENT
     end
-
-    # Store data in config
-    options["kdbx"] = rc.last_kdbx(options["kdbx"])
-    options["keyfile"] = rc.last_keyfile(options["keyfile"])
-    options["timeout"] = rc.timeout(options["timeout"])
 
     return options
 end
@@ -233,9 +194,13 @@ end
 options = parse(ARGV)
 
 begin
-    kdbx = options["kdbx"]
+    rc = options["config"]
+    kdbx = Pathname.new(rc.get_kdbx).expand_path
     password = options["password"] || get_password
-    keyfile = options["keyfile"]
+    keyfile = nil
+    if (rc.keyfile?)
+        keyfile = Pathname.new(rc.get_keyfile).expand_path
+    end
 
     # Read password from file if filename was provided
     pfile = Pathname.new(password).expand_path
@@ -283,7 +248,7 @@ begin
             {
                 "keepass" => keepass,
                 "cwd" => keepass.db,
-                "clipboard_timeout" => options["timeout"]
+                "clipboard_timeout" => options["config"].get_timeout
             }
         )
         keepass.wait_to_exit
@@ -292,7 +257,7 @@ begin
             {
                 "keepass" => keepass,
                 "cwd" => keepass.db,
-                "clipboard_timeout" => options["timeout"],
+                "clipboard_timeout" => options["config"].get_timeout,
                 "prompt_color" => "light_white"
             },
             "rpass:/> ".light_white
