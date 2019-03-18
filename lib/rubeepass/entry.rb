@@ -224,7 +224,7 @@ class RubeePass::Entry
         http.use_ssl = true
         res = http.request(Net::HTTP::Get.new(url))
 
-        return true if (res.body.match(/#{sha[5..]}/))
+        return true if (res.body.match(/#{sha[5..-1]}/))
         return false
     end
 
