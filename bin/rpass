@@ -3,7 +3,7 @@
 require "djinni"
 require "hilighter"
 require "io/console"
-require "json_config"
+require "jsoncfg"
 require "optparse"
 require "pathname"
 require "rubeepass"
