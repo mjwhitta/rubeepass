@@ -1,5 +1,7 @@
 # RubeePass
 
+<a href="https://www.buymeacoffee.com/mjwhitta">🍪 Buy me a cookie</a>
+
 Ruby KeePass 2.x implementation. Currently it is read-only.
 
 ## How to install
