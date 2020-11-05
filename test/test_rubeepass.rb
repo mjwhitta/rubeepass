@@ -17,6 +17,10 @@ class RPassTest < Minitest::Test
             # Pathname.new("#{k}4_twofish_aes.gz.kdbx").expand_path,
             # Pathname.new("#{k}4_twofish_argon2.gz.kdbx").expand_path
         ]
+        @kdbx_without_pwd = Pathname.new(
+            "#{k}_without_pwd.kdbx"
+        ).expand_path
+
         @keyfile1 = Pathname.new("test/key/bin.key").expand_path
         @keyfile2 = Pathname.new("test/key/hex.key").expand_path
         @keyfile3 = Pathname.new("test/key/key.xml").expand_path
@@ -107,6 +111,8 @@ class RPassTest < Minitest::Test
             RubeePass.new(kdbx, "asdf", @keyfile2).open
             RubeePass.new(kdbx, "asdf", @keyfile3).open
         end
+
+        RubeePass.new(@kdbx_without_pwd, nil, @keyfile1).open
     end
 
     def test_passwords

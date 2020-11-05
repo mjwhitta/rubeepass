@@ -23,5 +23,5 @@ Gem::Specification.new do |s|
     s.metadata = {"source_code_uri" => s.homepage}
     s.name = "rubeepass"
     s.summary = "Ruby KeePass 2.x read-only client"
-    s.version = "3.4.9"
+    s.version = "3.5.0"
 end

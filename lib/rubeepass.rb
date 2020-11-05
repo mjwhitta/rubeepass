@@ -342,8 +342,6 @@ class RubeePass
     end
 
     def join_key_and_keyfile
-        passhash = Digest::SHA256.digest(@password)
-
         filehash = ""
         if (@keyfile)
             contents = File.readlines(@keyfile).join
@@ -370,7 +368,12 @@ class RubeePass
             end
         end
 
-        @initial_key = Digest::SHA256.digest(passhash + filehash)
+        if @password.nil?
+            @initial_key = Digest::SHA256.digest(filehash)
+        else
+            passhash = Digest::SHA256.digest(@password)
+            @initial_key = Digest::SHA256.digest(passhash + filehash)
+        end
     end
     private :join_key_and_keyfile
 
