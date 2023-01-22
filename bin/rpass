@@ -285,7 +285,7 @@ rescue Exception => e
         "persists, file a bug at:"
     ].join(" ").wrap
     $stderr.puts
-    $stderr.puts "    https://gitlab.com/mjwhitta/rubeepass/issues"
+    $stderr.puts "    https://github.com/mjwhitta/rubeepass/issues"
     $stderr.puts
     $stderr.puts [
         "Maybe the message below will help. If not, you can use the",

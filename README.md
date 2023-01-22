@@ -55,7 +55,7 @@ showall    Show group/entry contents (showall includes passwords)
 
 ## Links
 
-- [Source](https://gitlab.com/mjwhitta/rubeepass)
+- [Source](https://github.com/mjwhitta/rubeepass)
 - [RubyGems](https://rubygems.org/gems/rubeepass)
 
 ## TODO
